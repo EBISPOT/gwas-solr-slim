@@ -1,0 +1,1 @@
+# gwas-solr-slim
