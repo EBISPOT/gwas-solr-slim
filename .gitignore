@@ -1,4 +1,5 @@
 # Files to ignore
 *.pyc
 *.bak
+*.txt
 
