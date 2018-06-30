@@ -8,8 +8,9 @@ import argparse
 import sys
 from tqdm import tqdm
 import json
-import csv
-from pprint import pprint
+# import csv
+# from pprint import pprint
+import os.path
 
 sys.path.insert(0, '/path/to/gwas_data_sources')
 import gwas_data_sources
@@ -24,17 +25,13 @@ def get_publicaton_data():
 
     # List of queries
     publication_sql = """
-        SELECT DISTINCT(P.PUBMED_ID), P.PUBLICATION, A.FULLNAME_STANDARD, A.ORCID, 
-            P.TITLE, TO_CHAR(P.PUBLICATION_DATE, 'yyyy-mm-dd'), 'publication' as resourcename
-        FROM PUBLICATION P, AUTHOR A, STUDY S, HOUSEKEEPING H
-        WHERE P.FIRST_AUTHOR_ID=A.ID
-            and S.PUBLICATION_ID=P.ID and S.HOUSEKEEPING_ID=H.ID 
-            and H.IS_PUBLISHED=1
+        SELECT P.ID, P.PUBMED_ID, P.PUBLICATION, P.TITLE,
+            TO_CHAR(P.PUBLICATION_DATE, 'yyyy-mm-dd'), 'publication' as resourcename
+        FROM PUBLICATION P
     """
 
-
     publication_author_list_sql = """
-        SELECT A.FULLNAME_STANDARD
+        SELECT A.FULLNAME, A.FULLNAME_STANDARD, PA.SORT, A.ORCID
         FROM PUBLICATION P, AUTHOR A, PUBLICATION_AUTHORS PA
         WHERE P.ID=PA.PUBLICATION_ID and PA.AUTHOR_ID=A.ID
               and P.PUBMED_ID= :pubmed_id
@@ -49,50 +46,62 @@ def get_publicaton_data():
         dsn_tns = cx_Oracle.makedsn(ip, port, sid)
         connection = cx_Oracle.connect(username, password, dsn_tns)
 
-        # cursor = connection.cursor()
         with contextlib.closing(connection.cursor()) as cursor:
 
             cursor.execute(publication_sql)
 
             publication_data = cursor.fetchall()
+            # print "** PUBLICATION: ", publication_data
 
-            count = 0
-            # unique_id = {}
+
             for publication in tqdm(publication_data):
                 publication = list(publication)
-                count += 1
 
                 # get author list
                 cursor.prepare(publication_author_list_sql)                
-                r = cursor.execute(None, {'pubmed_id': publication[0]})
-                all_authors = cursor.fetchall()
+                r = cursor.execute(None, {'pubmed_id': publication[1]})
+                author_data = cursor.fetchall()
 
-                # print "** PMID: ", publication[0]
-                # print "** All-Authors: ", all_authors
+                # print "** PMID: ", publication[1]
+                # print "** All-Authors: ", author_data
 
-                authors = []
-                for pmid_author in all_authors:
-                    # convert to string and remove trailing space and comma
-                    author = str(pmid_author[0])
-                    authors.append(author)
-                 
-                # print "** Authors: ", authors   
+
+                # TODO: Generate author, author_s, authorAscii, authorList fields
+                # AND Update JSON formatting to account for these new fields
+
+                first_author = [author_data[0][0]]
+                publication.append(first_author)
+
+                author_s = author_data[0][0]
+                publication.append(author_s)
+
+                author_ascii = [author_data[0][1]]
+                publication.append(author_ascii)
+
+                author_ascii_s = author_data[0][1]
+                publication.append(author_ascii_s)
+
+                if author_data[0][3] is None:
+                    author_orcid = 'NA'
+                else:   
+                    author_orcid = author_data[0][3] 
                 
-                # add authors to publication data
-                publication.append(authors)
-                # print "** Pub: ", publication, "\n"
+                authorList = []
+                for author in author_data:
+                    # create author list, e.g. "Grallert H | Grallert H | 5 | ORCID"
+                    author_formatted = str(author[0])+" | "+str(author[1])+\
+                        " | "+str(author[2])+" | "+author_orcid
+                    authorList.append(author_formatted)
+                
+                # add authorList to publication data
+                publication.append(authorList)
+                # print "** Publication: ", publication, "\n"
 
-                # add unique identifier to the record
-                # unique_id = 'publication'+str(count)
-                # publication.append(unique_id)
 
                 # add publication data to list of all publication data
                 all_publication_data.append(publication)
-
-        # cursor.close()
+        
         connection.close()
-
-        # print "** Num Rows: ", len(all_publication_data), all_publication_data[0]
         return all_publication_data
 
     except cx_Oracle.DatabaseError, exception:
@@ -101,61 +110,42 @@ def get_publicaton_data():
 
 def format_data(data, data_type):
     '''
-    Convert list of data to JSON.
+    Convert list of data to JSON and write to file.
     '''
     data_dict = {}
     data_solr_doc = []
     
-    # Use counts to generate unique id
-    count = 0
-
+    
     for data_row in data:
         data_row = list(data_row)
-        # print "** Row: ", len(data_row)
-        count += 1
-
-        my_keys = []
-
-        publication_attr_list = ['pmid', 'journal', 'author', 'orcid', 'title', 'publicationDate', 'resourcename', 'authorList']
-        # print "** PAL: ", len(publication_attr_list)
-        # for item in row:
-            # count += 1
-        #     print "** DataItem: ", item
-            # data_dict[count] = item
         
+        publication_attr_list = ['id', 'pmid', 'journal', 'title', \
+            'publicationDate', 'resourcename', 'author', 'author_s', \
+            'authorAscii', 'authorAscii_s', 'authorsList']
+       
         if data_type == 'publication':
-            my_keys = publication_attr_list
 
-            data_dict = dict(zip(my_keys, data_row))
-            # print "** Dict: ", data_dict
+            data_dict = dict(zip(publication_attr_list, data_row))
 
-
-            # Add unique id to document
-            unique_id = 'publication:'+str(count)
-            # print "** UniqID: ", unique_id
-            data_dict['id'] = unique_id
-
-            # Should resourcename be added here vs. in the query, is it more efficient here? 
+            data_dict['id'] = data_row[5]+":"+str(data_row[0])
 
             data_solr_doc.append(data_dict)
             data_dict = {}
-            # count = 0
 
-    # print json.dumps(publication_solr_doc)
     jsonData = json.dumps(data_solr_doc)
     # print type(jsonData)
 
+    my_path = os.path.abspath(os.path.dirname(__file__))
+    path = os.path.join(my_path, "data/publication_data.json")
 
-
-    with open ('publication_data.json', 'w') as outfile:
-        # json.dump(publication_solr_doc, outfile)
+    with open(path, 'w') as outfile:
         outfile.write(jsonData)
 
 
 
 def get_study_data():
     '''
-    Get Stuy data for Solr document.
+    Get Study data for Solr document.
     '''
 
     # List of queries
@@ -285,7 +275,7 @@ def get_disease_trait():
         dsn_tns = cx_Oracle.makedsn(ip, port, sid)
         connection = cx_Oracle.connect(username, password, dsn_tns)
 
-        # cursor = connection.cursor()
+
         with contextlib.closing(connection.cursor()) as cursor:
 
             cursor.execute(disease_sql)
@@ -347,8 +337,8 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--mode', default='debug', choices=['debug', 'production'], 
                         help='Run as (default: debug).')
-    parser.add_argument('--database', default='DEV3', choices=['DEV3', 'SPOTREL'], 
-                        help='Run as (default: DEV3).')
+    parser.add_argument('--database', default='SPOTREL', choices=['DEV3', 'SPOTREL'], 
+                        help='Run as (default: SPOTREL).')
     args = parser.parse_args()
 
     global DATABASE_NAME
@@ -357,7 +347,6 @@ if __name__ == '__main__':
 
     # Create Publication documents
     publication_data = get_publicaton_data()
-    # print "** PD: ", publication_data
     publication_data_type  = 'publication'
 
     format_data(publication_data, publication_data_type)
