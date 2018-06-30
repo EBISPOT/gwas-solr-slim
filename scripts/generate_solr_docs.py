@@ -38,6 +38,18 @@ def get_publicaton_data():
         ORDER BY PA.SORT ASC
     """
 
+    publication_association_cnt_sql = """
+        SELECT COUNT(A.ID)
+        FROM ASSOCIATION A, STUDY S
+        WHERE A.STUDY_ID=S.ID and S.PUBMED_ID= :pubmed_id
+    """
+
+    publication_study_cnt_sql = """
+        SELECT COUNT(S.PUBMED_ID)
+        FROM STUDY S
+        WHERE S.PUBMED_ID= :pubmed_id
+    """
+
 
     all_publication_data = []
 
@@ -57,18 +69,14 @@ def get_publicaton_data():
             for publication in tqdm(publication_data):
                 publication = list(publication)
 
-                # get author list
+                ############################
+                # Get Author data
+                ############################
                 cursor.prepare(publication_author_list_sql)                
                 r = cursor.execute(None, {'pubmed_id': publication[1]})
                 author_data = cursor.fetchall()
 
-                # print "** PMID: ", publication[1]
-                # print "** All-Authors: ", author_data
-
-
-                # TODO: Generate author, author_s, authorAscii, authorList fields
-                # AND Update JSON formatting to account for these new fields
-
+                # create author field data
                 first_author = [author_data[0][0]]
                 publication.append(first_author)
 
@@ -98,6 +106,26 @@ def get_publicaton_data():
                 # print "** Publication: ", publication, "\n"
 
 
+                ##########################
+                # Get Association count 
+                ##########################
+                cursor.prepare(publication_association_cnt_sql)                
+                r = cursor.execute(None, {'pubmed_id': publication[1]})
+                association_cnt = cursor.fetchone()
+
+                publication.append(association_cnt)
+
+
+                #########################################
+                # Get number of Studies per Publication
+                #########################################
+                cursor.prepare(publication_study_cnt_sql)                
+                r = cursor.execute(None, {'pubmed_id': publication[1]})
+                study_cnt = cursor.fetchone()
+
+                publication.append(study_cnt)
+
+
                 # add publication data to list of all publication data
                 all_publication_data.append(publication)
         
@@ -121,7 +149,8 @@ def format_data(data, data_type):
         
         publication_attr_list = ['id', 'pmid', 'journal', 'title', \
             'publicationDate', 'resourcename', 'author', 'author_s', \
-            'authorAscii', 'authorAscii_s', 'authorsList']
+            'authorAscii', 'authorAscii_s', 'authorsList', \
+            'association_cnt', 'study_cnt']
        
         if data_type == 'publication':
 
