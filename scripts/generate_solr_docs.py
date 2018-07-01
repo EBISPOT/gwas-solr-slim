@@ -164,7 +164,7 @@ def format_data(data, data_type):
 
         study_attr_list = ['id']
        
-        if data_type == 'publication':
+        if data_type in ['publication', 'all']:
 
             data_dict = dict(zip(publication_attr_list, data_row))
 
@@ -182,7 +182,7 @@ def format_data(data, data_type):
                 outfile.write(jsonData)
 
 
-        if data_type == 'study':
+        if data_type in ['study', 'all']:
             pass
 
 
@@ -432,27 +432,31 @@ if __name__ == '__main__':
 
     # Commandline arguments
     parser = argparse.ArgumentParser()
-    parser.add_argument('--mode', default='debug', choices=['debug', 'production'], 
-                        help='Run as (default: debug).')
+    # parser.add_argument('--mode', default='debug', choices=['debug', 'production'],
+    #                     help='Run as (default: debug).')
     parser.add_argument('--database', default='SPOTREL', choices=['DEV3', 'SPOTREL'], 
                         help='Run as (default: SPOTREL).')
+    parser.add_argument('--data_type', default='publication', choices=['publication', 'study', 'all'],
+                        help='Run as (default: publication).')
     args = parser.parse_args()
 
     global DATABASE_NAME
     DATABASE_NAME = args.database
 
 
-    # Create Publication documents
-    publication_data_type  = 'publication'
-    publication_data = get_publicaton_data()
-    format_data(publication_data, publication_data_type)
+    if args.data_type in ['publication', 'all']:
+        # Create Publication documents
+        publication_datatype  = 'publication'
+        publication_data = get_publicaton_data()
+        format_data(publication_data, publication_datatype)
 
 
-    # Create Study documents
-    # study_data_type  = 'study'
-    # study_data = get_study_data()
-    # print "** SD: ", study_data
-    # format_data(study_data, study_data_type)
+    if args.data_type in ['study', 'all']:
+        # Create Study documents
+        study_data_type  = 'study'
+        study_data = get_study_data()
+        print "** SD: ", study_data
+        format_data(study_data, study_data_type)
 
 
     # Create EFO documents
