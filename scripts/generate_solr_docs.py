@@ -30,6 +30,7 @@ def get_publicaton_data():
         FROM PUBLICATION P
     """
 
+
     publication_author_list_sql = """
         SELECT A.FULLNAME, A.FULLNAME_STANDARD, PA.SORT, A.ORCID
         FROM PUBLICATION P, AUTHOR A, PUBLICATION_AUTHORS PA
@@ -38,16 +39,20 @@ def get_publicaton_data():
         ORDER BY PA.SORT ASC
     """
 
+
     publication_association_cnt_sql = """
         SELECT COUNT(A.ID)
-        FROM ASSOCIATION A, STUDY S
-        WHERE A.STUDY_ID=S.ID and S.PUBMED_ID= :pubmed_id
+        FROM STUDY S, PUBLICATION P, ASSOCIATION A
+        WHERE S.PUBLICATION_ID=P.ID and A.STUDY_ID=S.ID
+            and P.PUBMED_ID= :pubmed_id
     """
 
+
     publication_study_cnt_sql = """
-        SELECT COUNT(S.PUBMED_ID)
-        FROM STUDY S
-        WHERE S.PUBMED_ID= :pubmed_id
+        SELECT COUNT(S.ID)
+        FROM STUDY S, PUBLICATION P
+        WHERE S.PUBLICATION_ID=P.ID
+            and P.PUBMED_ID= :pubmed_id
     """
 
 
@@ -126,10 +131,15 @@ def get_publicaton_data():
                 publication.append(study_cnt)
 
 
-                # add publication data to list of all publication data
+                ######################################
+                # Add publication data document to
+                # list of all publication data docs
+                ######################################
                 all_publication_data.append(publication)
         
+
         connection.close()
+
         return all_publication_data
 
     except cx_Oracle.DatabaseError, exception:
@@ -151,6 +161,8 @@ def format_data(data, data_type):
             'publicationDate', 'resourcename', 'author', 'author_s', \
             'authorAscii', 'authorAscii_s', 'authorsList', \
             'association_cnt', 'study_cnt']
+
+        study_attr_list = ['id']
        
         if data_type == 'publication':
 
@@ -161,14 +173,17 @@ def format_data(data, data_type):
             data_solr_doc.append(data_dict)
             data_dict = {}
 
-    jsonData = json.dumps(data_solr_doc)
-    # print type(jsonData)
+            jsonData = json.dumps(data_solr_doc)
 
-    my_path = os.path.abspath(os.path.dirname(__file__))
-    path = os.path.join(my_path, "data/publication_data.json")
+            my_path = os.path.abspath(os.path.dirname(__file__))
+            path = os.path.join(my_path, "data/publication_data.json")
 
-    with open(path, 'w') as outfile:
-        outfile.write(jsonData)
+            with open(path, 'w') as outfile:
+                outfile.write(jsonData)
+
+
+        if data_type == 'study':
+            pass
 
 
 
@@ -179,9 +194,9 @@ def get_study_data():
 
     # List of queries
     study_sql = """
-        SELECT S.ID, S.ACCESSION_ID, S.TITLE, 'study' as resourcename
+        SELECT S.ID, S.ACCESSION_ID, 'TODO-Title-Generation' as title, 'study' as resourcename
         FROM STUDY S
-        WHERE ROWNUM <= 3
+        WHERE ROWNUM <=5
     """
 
     study_platform_types_sql = """
@@ -193,11 +208,14 @@ def get_study_data():
     """
 
     study_ancestral_groups_sql = """
-        SELECT DISTINCT S.ID , listagg(AG.ANCESTRAL_GROUP, ', ') WITHIN GROUP (ORDER BY AG.ANCESTRAL_GROUP) AS ANCESTRAL_GROUP
-        FROM STUDY S, ANCESTRY A, ANCESTRY_ANCESTRAL_GROUP AAG, ANCESTRAL_GROUP AG
-        WHERE S.ID=A.STUDY_ID and A.ID=AAG.ANCESTRY_ID and AAG.ANCESTRAL_GROUP_ID=AG.ID
-            and S.ID= :study_id
-        GROUP BY S.ID
+        SELECT  x.ID, listagg(x.ANCESTRAL_GROUP, ', ') WITHIN GROUP (ORDER BY x.ANCESTRAL_GROUP)
+        FROM (
+                SELECT DISTINCT S.ID, AG.ANCESTRAL_GROUP
+                FROM STUDY S, ANCESTRY A, ANCESTRY_ANCESTRAL_GROUP AAG, ANCESTRAL_GROUP AG
+                WHERE S.ID=A.STUDY_ID and A.ID=AAG.ANCESTRY_ID and AAG.ANCESTRAL_GROUP_ID=AG.ID
+                    and S.ID= :study_id
+            ) x
+        GROUP BY x.ID
     """
 
 
@@ -208,7 +226,7 @@ def get_study_data():
             and S.ID= :study_id
         """
 
-    study_num_associations_sql = """
+    study_associations_cnt_sql = """
         SELECT S.ID, COUNT(ASSOC.ID)
         FROM STUDY S, ASSOCIATION ASSOC
         WHERE S.ID=ASSOC.STUDY_ID
@@ -222,6 +240,7 @@ def get_study_data():
 
     try:
         ip, port, sid, username, password = gwas_data_sources.get_db_properties(DATABASE_NAME)
+
         dsn_tns = cx_Oracle.makedsn(ip, port, sid)
         connection = cx_Oracle.connect(username, password, dsn_tns)
 
@@ -235,27 +254,76 @@ def get_study_data():
             for study in tqdm(study_data):
                 study = list(study)
 
-                # get plaform list
-                cursor.prepare(study_platform_types_sql)                
+
+                ######################
+                # Get platform list
+                ######################
+                cursor.prepare(study_platform_types_sql)
                 r = cursor.execute(None, {'study_id': study[0]})
                 platforms = cursor.fetchall()
-                print "** Platforms: ", platforms, type(platforms)
-                # Do null values occur for platform?
 
-                # add platforms to study data
-                study.append(platforms[0][1])
+
+                # Handle cases where there are no values for Platform
+                if not platforms:
+                    platform = 'NR'
+                else:
+                    platform = platforms[0][1]
+
+                # add platforms (as string) to study data
+                study.append(platform)
                 
 
-                # TODO: Make queries to other datatypes, e.g. ancestral_group, reported_trait, number of associations
+                #######################
+                # Get Ancestral groups
+                #######################
+                study_ancestral_groups = []
+
+                cursor.prepare(study_ancestral_groups_sql)
+                r = cursor.execute(None, {'study_id': study[0]})
+                ancestral_groups = cursor.fetchall()
+
+                study_ancestral_groups = [ancestral_groups[0][1]]
+
+                # add ancestry information to study data
+                study.append(study_ancestral_groups)
 
 
-                # add study data to list of all study data
+                #######################
+                # Get Reported Trait
+                #######################
+                study_reported_traits = []
+
+                cursor.prepare(study_reported_trait_sql)
+                r = cursor.execute(None, {'study_id': study[0]})
+                reported_traits = cursor.fetchall()
+
+                for trait in reported_traits:
+                    study_reported_traits.append(trait[1])
+
+                study.append(study_reported_traits)
+
+
+                ###############################
+                # Get Study-Association count
+                ###############################
+                cursor.prepare(study_associations_cnt_sql)
+                r = cursor.execute(None, {'study_id': study[0]})
+                association_cnt = cursor.fetchall()
+
+
+                study.append(association_cnt[0][1])
+
+
+                #############################################
+                # Add study data to list of all study data
+                #############################################
+                print "** Study Data: ", study
+
                 all_study_data.append(study)
 
-        # cursor.close()
+
         connection.close()
 
-        # print "** Num Rows: ", len(all_study_data), all_study_data[0]
         return all_study_data
 
     except cx_Oracle.DatabaseError, exception:
@@ -371,19 +439,20 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     global DATABASE_NAME
-    DATABASE_NAME = args.database 
+    DATABASE_NAME = args.database
 
 
     # Create Publication documents
-    publication_data = get_publicaton_data()
     publication_data_type  = 'publication'
-
+    publication_data = get_publicaton_data()
     format_data(publication_data, publication_data_type)
 
 
     # Create Study documents
+    # study_data_type  = 'study'
     # study_data = get_study_data()
     # print "** SD: ", study_data
+    # format_data(study_data, study_data_type)
 
 
     # Create EFO documents
