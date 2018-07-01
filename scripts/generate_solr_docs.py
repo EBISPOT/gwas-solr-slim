@@ -161,6 +161,8 @@ def format_data(data, data_type):
         'platform', 'ancestralGroups', 'traitName_s', 'traitName', \
         'associationCount']
 
+    trait_attr_list = ['id', 'trait', 'resourcename', ]
+
 
     for data_row in tqdm(data, desc='Format data'):
         data_row = list(data_row)
@@ -381,29 +383,43 @@ def get_efo_data():
     ols_data.get_ols_results()
 
 
+
 def get_disease_trait():
     '''
-    Given each unique reported disease trait, get all mapped/EFO trait information.
+    Given each EFO trait, get all Reported trait information.
     '''
     
+    # Only select EFOs that are already assigned to Studies
     efo_sql = """
-
+        SELECT DISTINCT(ET.ID), ET.TRAIT, COUNT(S.ID) AS NUM_SUDIES, 'trait' as resourcename
+        FROM STUDY S, EFO_TRAIT ET, STUDY_EFO_TRAIT SETR
+        WHERE S.ID=SETR.STUDY_ID and SETR.EFO_TRAIT_ID=ET.ID
+        GROUP BY ET.ID, ET.TRAIT, 'trait'
     """
 
-    disease_sql = """
-        SELECT DT.ID, DT.TRAIT, 'diseaseTrait' as resourcename
-        FROM DISEASE_TRAIT DT
-    """
+    # disease_sql = """
+    #     SELECT DT.ID, DT.TRAIT, 'diseaseTrait' as resourcename
+    #     FROM DISEASE_TRAIT DT
+    # """
 
-    mapped_trait_sql = """
-        SELECT ET.TRAIT, DT.TRAIT
+    # mapped_trait_sql = """
+    #     SELECT ET.TRAIT, DT.TRAIT
+    #     FROM STUDY S, EFO_TRAIT ET, DISEASE_TRAIT DT, STUDY_EFO_TRAIT SETR, STUDY_DISEASE_TRAIT SDT
+    #     WHERE S.ID=SETR.STUDY_ID and SETR.EFO_TRAIT_ID=ET.ID 
+    #         and S.ID=SDT.STUDY_ID and SDT.DISEASE_TRAIT_ID=DT.ID
+    #         and DT.TRAIT = :disease_trait
+    # """
+
+    reported_trait_sql = """
+        SELECT DISTINCT(ET.ID), listagg(DT.TRAIT, ', ') WITHIN GROUP (ORDER BY DT.TRAIT)
         FROM STUDY S, EFO_TRAIT ET, DISEASE_TRAIT DT, STUDY_EFO_TRAIT SETR, STUDY_DISEASE_TRAIT SDT
         WHERE S.ID=SETR.STUDY_ID and SETR.EFO_TRAIT_ID=ET.ID 
-            and S.ID=SDT.STUDY_ID and SDT.DISEASE_TRAIT_ID=DT.ID
-            and DT.TRAIT = :disease_trait
+            and S.ID=SDT.STUDY_ID and SDT.DISEASE_TRAIT_ID=DT.ID 
+            and ET.ID = :trait_id
+        GROUP BY ET.ID
     """
 
-    all_disease_data = []
+    all_trait_data = []
 
     try:
         ip, port, sid, username, password = gwas_data_sources.get_db_properties(DATABASE_NAME)
@@ -413,38 +429,39 @@ def get_disease_trait():
 
         with contextlib.closing(connection.cursor()) as cursor:
 
-            cursor.execute(disease_sql)
+            cursor.execute(efo_sql)
 
-            disease_trait_data = cursor.fetchall()
+            mapped_trait_data = cursor.fetchall()
 
-            for reported_trait in tqdm(disease_trait_data):
-                reported_trait = list(reported_trait)
-                print "** Reported disease trait: ", reported_trait
+            for mapped_trait in tqdm(mapped_trait_data, desc='Get EFO/Mapped trait data'):
+                mapped_trait = list(mapped_trait)
+                print "** Mapped EFO trait: ", mapped_trait
 
-                # get mapped/efo trait
-                cursor.prepare(mapped_trait_sql)                
-                r = cursor.execute(None, {'disease_trait': reported_trait[1]})
-                all_mapped_traits = cursor.fetchall()
-                # print "** Mapped trait(s): ", all_mapped_traits
+                #########################
+                # Get reported trait(s)
+                #########################
+                cursor.prepare(reported_trait_sql)
+                r = cursor.execute(None, {'trait_id': mapped_trait[0]})
+                all_reported_traits = cursor.fetchall()
+                print "** Reported trait(s): ", all_reported_traits, "\n", [all_reported_traits[0][1]]
 
-                # add EFOs to disease trait data, this can return >1 result
-                for mapped_trait in all_mapped_traits:
-                    print "** MT: ", mapped_trait[0]
-                    reported_trait.append(mapped_trait[0])
-                
+                # add reported trait as string
+                mapped_trait.append(all_reported_traits[0][1])
+
+                # add reported trait as list
+                mapped_trait.append([all_reported_traits[0][1]])
+
                 print "\n"
 
                 # TODO: Add data for EFOs from OLS
 
 
                 # add study data to list of all study data
-                all_disease_data.append(reported_trait)
+                # all_trait_data.append(mapped_trait)
 
-        # cursor.close()
         connection.close()
 
-        # print "** Num Rows: ", len(all_study_data), all_study_data[0]
-        return all_disease_data
+        # return all_trait_data
 
     except cx_Oracle.DatabaseError, exception:
         print exception
@@ -474,7 +491,8 @@ if __name__ == '__main__':
     #                     help='Run as (default: debug).')
     parser.add_argument('--database', default='SPOTREL', choices=['DEV3', 'SPOTREL'], 
                         help='Run as (default: SPOTREL).')
-    parser.add_argument('--data_type', default='publication', choices=['publication', 'study', 'all'],
+    parser.add_argument('--data_type', default='publication', \
+                        choices=['publication', 'study', 'trait', 'all'],
                         help='Run as (default: publication).')
     args = parser.parse_args()
 
@@ -482,15 +500,15 @@ if __name__ == '__main__':
     DATABASE_NAME = args.database
 
 
+    # Create Publication documents
     if args.data_type in ['publication', 'all']:
-        # Create Publication documents
         publication_datatype  = 'publication'
         publication_data = get_publicaton_data()
         format_data(publication_data, publication_datatype)
 
 
+    # Create Study documents
     if args.data_type in ['study', 'all']:
-        # Create Study documents
         study_data_type  = 'study'
         study_data = get_study_data()
         format_data(study_data, study_data_type)
@@ -499,8 +517,13 @@ if __name__ == '__main__':
     # Create EFO documents
     # efo_data = get_efo_data()
 
+
     # Create Disease Trait documents
-    # disease_trait_data = get_disease_trait()
+    if args.data_type in ['trait', 'all']:
+        trait_data_type  = 'trait'
+        trait_data = get_disease_trait()
+        # format_data(trait_data, trait_data_type)
+
 
 
     
