@@ -68,10 +68,9 @@ def get_publicaton_data():
             cursor.execute(publication_sql)
 
             publication_data = cursor.fetchall()
-            # print "** PUBLICATION: ", publication_data
 
 
-            for publication in tqdm(publication_data):
+            for publication in tqdm(publication_data, desc='Get Publication data'):
                 publication = list(publication)
 
                 ############################
@@ -108,7 +107,6 @@ def get_publicaton_data():
                 
                 # add authorList to publication data
                 publication.append(authorList)
-                # print "** Publication: ", publication, "\n"
 
 
                 ##########################
@@ -152,18 +150,22 @@ def format_data(data, data_type):
     '''
     data_dict = {}
     data_solr_doc = []
-    
-    
-    for data_row in data:
-        data_row = list(data_row)
-        
-        publication_attr_list = ['id', 'pmid', 'journal', 'title', \
-            'publicationDate', 'resourcename', 'author', 'author_s', \
-            'authorAscii', 'authorAscii_s', 'authorsList', \
-            'association_cnt', 'study_cnt']
 
-        study_attr_list = ['id']
-       
+    publication_attr_list = ['id', 'pmid', 'journal', 'title', \
+        'publicationDate', 'resourcename', 'author', 'author_s', \
+        'authorAscii', 'authorAscii_s', 'authorsList', \
+        'association_cnt', 'study_cnt']
+
+
+    study_attr_list = ['id', 'accessionId', 'title', 'resourcename', \
+        'platform', 'ancestralGroups', 'traitName_s', 'traitName', \
+        'associationCount']
+
+
+    for data_row in tqdm(data, desc='Format data'):
+        data_row = list(data_row)
+
+        # Create Publication documents
         if data_type in ['publication', 'all']:
 
             data_dict = dict(zip(publication_attr_list, data_row))
@@ -182,8 +184,22 @@ def format_data(data, data_type):
                 outfile.write(jsonData)
 
 
+        # Create Study documents
         if data_type in ['study', 'all']:
-            pass
+            data_dict = dict(zip(study_attr_list, data_row))
+
+            data_dict['id'] = data_row[3]+":"+str(data_row[0])
+
+            data_solr_doc.append(data_dict)
+            data_dict = {}
+
+            jsonData = json.dumps(data_solr_doc)
+
+            my_path = os.path.abspath(os.path.dirname(__file__))
+            path = os.path.join(my_path, "data/study_data.json")
+
+            with open(path, 'w') as outfile:
+                outfile.write(jsonData)
 
 
 
@@ -196,7 +212,6 @@ def get_study_data():
     study_sql = """
         SELECT S.ID, S.ACCESSION_ID, 'TODO-Title-Generation' as title, 'study' as resourcename
         FROM STUDY S
-        WHERE ROWNUM <=5
     """
 
     study_platform_types_sql = """
@@ -220,11 +235,13 @@ def get_study_data():
 
 
     study_reported_trait_sql = """
-        SELECT S.ID, DT.TRAIT
+        SELECT DISTINCT S.ID, listagg(DT.TRAIT, ', ') WITHIN GROUP (ORDER BY DT.TRAIT) AS TRAITS
         FROM STUDY S, STUDY_DISEASE_TRAIT SDT, DISEASE_TRAIT DT
         WHERE S.ID=SDT.STUDY_ID and SDT.DISEASE_TRAIT_ID=DT.ID
-            and S.ID= :study_id
-        """
+              and S.ID= :study_id
+        GROUP BY S.ID
+    """
+
 
     study_associations_cnt_sql = """
         SELECT S.ID, COUNT(ASSOC.ID)
@@ -251,7 +268,10 @@ def get_study_data():
 
             study_data = cursor.fetchall()
 
-            for study in tqdm(study_data):
+            studies_missing_ancestral_groups = []
+            studies_missing_associations = []
+
+            for study in tqdm(study_data, desc='Get Study data'):
                 study = list(study)
 
 
@@ -282,7 +302,11 @@ def get_study_data():
                 r = cursor.execute(None, {'study_id': study[0]})
                 ancestral_groups = cursor.fetchall()
 
-                study_ancestral_groups = [ancestral_groups[0][1]]
+                if not ancestral_groups:
+                    study_ancestral_groups = 'NR'
+                    studies_missing_ancestral_groups.append(study[1])
+                else:
+                    study_ancestral_groups = [ancestral_groups[0][1]]
 
                 # add ancestry information to study data
                 study.append(study_ancestral_groups)
@@ -297,10 +321,11 @@ def get_study_data():
                 r = cursor.execute(None, {'study_id': study[0]})
                 reported_traits = cursor.fetchall()
 
-                for trait in reported_traits:
-                    study_reported_traits.append(trait[1])
+                # add trait as string
+                study.append(reported_traits[0][1])
 
-                study.append(study_reported_traits)
+                # add trait as list
+                study.append([reported_traits[0][1]])
 
 
                 ###############################
@@ -310,19 +335,32 @@ def get_study_data():
                 r = cursor.execute(None, {'study_id': study[0]})
                 association_cnt = cursor.fetchall()
 
+                if not association_cnt:
+                    association_cnt = 0
+                    study.append(association_cnt)
 
-                study.append(association_cnt[0][1])
+                    if study[1] not in studies_missing_associations:
+                        studies_missing_associations.append(study[1])
+                else:
+                    study.append(association_cnt[0][1])
+
 
 
                 #############################################
                 # Add study data to list of all study data
                 #############################################
-                print "** Study Data: ", study
-
                 all_study_data.append(study)
 
 
         connection.close()
+
+        # QA Checks of Association and Ancestral Group information
+        # print "** All Studies missing Ancestral groups: ", \
+        #     len(studies_missing_ancestral_groups), studies_missing_ancestral_groups
+
+        # print "** All Studies missing Associations: ", \
+        #     len(studies_missing_associations), studies_missing_associations
+
 
         return all_study_data
 
@@ -455,7 +493,6 @@ if __name__ == '__main__':
         # Create Study documents
         study_data_type  = 'study'
         study_data = get_study_data()
-        print "** SD: ", study_data
         format_data(study_data, study_data_type)
 
 
