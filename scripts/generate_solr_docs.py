@@ -391,24 +391,12 @@ def get_disease_trait():
     
     # Only select EFOs that are already assigned to Studies
     efo_sql = """
-        SELECT DISTINCT(ET.ID), ET.TRAIT, COUNT(S.ID) AS NUM_SUDIES, 'trait' as resourcename
+        SELECT DISTINCT(ET.ID), ET.TRAIT, ET.URI, COUNT(S.ID) AS NUM_SUDIES, 'trait' as resourcename
         FROM STUDY S, EFO_TRAIT ET, STUDY_EFO_TRAIT SETR
         WHERE S.ID=SETR.STUDY_ID and SETR.EFO_TRAIT_ID=ET.ID
-        GROUP BY ET.ID, ET.TRAIT, 'trait'
+        GROUP BY ET.ID, ET.TRAIT, 'trait', ET.URI
     """
 
-    # disease_sql = """
-    #     SELECT DT.ID, DT.TRAIT, 'diseaseTrait' as resourcename
-    #     FROM DISEASE_TRAIT DT
-    # """
-
-    # mapped_trait_sql = """
-    #     SELECT ET.TRAIT, DT.TRAIT
-    #     FROM STUDY S, EFO_TRAIT ET, DISEASE_TRAIT DT, STUDY_EFO_TRAIT SETR, STUDY_DISEASE_TRAIT SDT
-    #     WHERE S.ID=SETR.STUDY_ID and SETR.EFO_TRAIT_ID=ET.ID 
-    #         and S.ID=SDT.STUDY_ID and SDT.DISEASE_TRAIT_ID=DT.ID
-    #         and DT.TRAIT = :disease_trait
-    # """
 
     reported_trait_sql = """
         SELECT DISTINCT(ET.ID), listagg(DT.TRAIT, ', ') WITHIN GROUP (ORDER BY DT.TRAIT)
@@ -418,6 +406,15 @@ def get_disease_trait():
             and ET.ID = :trait_id
         GROUP BY ET.ID
     """
+
+    trait_association_cnt_sql = """
+        SELECT COUNT(ET.ID)
+        FROM EFO_TRAIT ET, ASSOCIATION_EFO_TRAIT AET, ASSOCIATION A
+        WHERE ET.ID=AET.EFO_TRAIT_ID and AET.ASSOCIATION_ID=A.ID
+            and ET.ID = :trait_id
+        GROUP BY ET.TRAIT
+    """
+
 
     all_trait_data = []
 
@@ -435,7 +432,7 @@ def get_disease_trait():
 
             for mapped_trait in tqdm(mapped_trait_data, desc='Get EFO/Mapped trait data'):
                 mapped_trait = list(mapped_trait)
-                print "** Mapped EFO trait: ", mapped_trait
+                # print "** Mapped EFO trait: ", mapped_trait
 
                 #########################
                 # Get reported trait(s)
@@ -443,7 +440,7 @@ def get_disease_trait():
                 cursor.prepare(reported_trait_sql)
                 r = cursor.execute(None, {'trait_id': mapped_trait[0]})
                 all_reported_traits = cursor.fetchall()
-                print "** Reported trait(s): ", all_reported_traits, "\n", [all_reported_traits[0][1]]
+                # print "** Reported trait(s): ", all_reported_traits, "\n", [all_reported_traits[0][1]]
 
                 # add reported trait as string
                 mapped_trait.append(all_reported_traits[0][1])
@@ -451,17 +448,63 @@ def get_disease_trait():
                 # add reported trait as list
                 mapped_trait.append([all_reported_traits[0][1]])
 
-                print "\n"
+                
+                #######################################
+                # Get count of associations per trait
+                #######################################
+                cursor.prepare(trait_association_cnt_sql)
+                r = cursor.execute(None, {'trait_id': mapped_trait[0]})
+                trait_assoc_cnt = cursor.fetchone()
+                # print "** Assoc CNT: ", trait_assoc_cnt
 
-                # TODO: Add data for EFOs from OLS
+                if not trait_assoc_cnt:
+                    trait_assoc_cnt = 0
+                    mapped_trait.append(trait_assoc_cnt)
+                else:
+                    mapped_trait.append(trait_assoc_cnt[0])
 
 
-                # add study data to list of all study data
-                # all_trait_data.append(mapped_trait)
+                #####################################
+                # Get EFO term information from OLS
+                #####################################
+                ols_data = OLSData.OLSData(mapped_trait[2])
+                ols_term_data = ols_data.get_ols_term()
+
+                # print "** Returned OLS Data: ", ols_term_data
+
+                if not ols_term_data['iri'] == None:
+                    mapped_uri = [ols_term_data['iri'].encode('utf-8')]
+                    mapped_trait.append(mapped_uri)
+
+                    short_form = [ols_term_data['short_form'].encode('utf-8')]
+                    mapped_trait.append(short_form)
+
+                    label = [ols_term_data['label'].encode('utf-8')]
+                    mapped_trait.append(label)
+
+                    # str(item) for item in list]
+                    if not ols_term_data['synonyms'] == None:
+                        synonyms = [synonym.encode('utf-8') for synonym in ols_term_data['synonyms']]
+                        mapped_trait.append(synonyms)
+                    else: 
+                        synonyms = []
+                        mapped_trait.append(synonyms)
+                else:
+                    # add placeholder data
+                    for item in range(4):
+                        mapped_trait.append(None)
+
+
+
+                ############################################
+                # Add trait data to list of all trait data
+                ############################################
+                all_trait_data.append(mapped_trait)
+
 
         connection.close()
 
-        # return all_trait_data
+        return all_trait_data
 
     except cx_Oracle.DatabaseError, exception:
         print exception

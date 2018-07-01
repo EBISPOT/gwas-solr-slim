@@ -6,48 +6,46 @@ import DataFormatter
 
 
 class OLSData:
-    def __init__(self, search_term):
-        self.search_term = search_term
+    def __init__(self, term_iri):
+        self.term_iri = term_iri
 
-    def get_ols_results(self):
+    def get_ols_term(self):
         '''
-        Use OLS Search API to get details about ontology terms.
+        Use OLS Term API to get details about an ontology term. 
         '''
-        search_value = self.search_term
 
-        params = "exact=true&fieldList=iri,label,short_form,obo_id,ontology_name,ontology_prefix,description,type,synonym"
+        term_iri = self.term_iri
+        term_iri_double_encoded = urllib.quote_plus(urllib.quote_plus(term_iri))
 
-        search_value = urllib.quote(search_value)
-        OLS_URL = " http://www.ebi.ac.uk/ols/api/search?q={search_value:s}&ontology=efo&" \
-                    "{params}".format(search_value=search_value, params=params)
+        # TODO: Handle terms from other ontologies, e.g. GO, PATO, etc
+        # Parse ontology prefix from term iri
 
-        print "*** Searching with: ", search_value
-        print "*** OLS_URL: ", OLS_URL
 
+        # TODO: Make robust to the term/ontology being removed from OLS
+        OLS_URL = "http://www.ebi.ac.uk/ols/api/ontologies/{ontology_prefix:s}/terms/"\
+            "{term_iri:s}".format(ontology_prefix='efo',term_iri=term_iri_double_encoded)
+
+        no_results = {'iri': None, 'synonyms': None, 'short_form': None, 'label': None}
 
         try:
             response = requests.get(OLS_URL)
             if response.status_code == 200:
                 results = json.loads(response.content)
-                if results:
-                    num_results = results["response"]["numFound"]
-                    # print "** NumResults: ", num_results
-                    if num_results == 0:
-                        # TODO: Handle this as an error case
-                        return (num_results,"None")
 
-                    elif num_results == 1:
-                        terms_found = results["response"]["docs"]
-                        data_formatter = DataFormatter.DataFormatter(search_value, num_results, terms_found)
-                        return (num_results, data_formatter.create_term_result_obj())
+                if results:
+                    data_formatter = DataFormatter.DataFormatter(results)
+                    return (data_formatter.create_term_result_obj())
 
                 else:
-                    # print "** No reponse!!!"
-                    # csvout.writerow(["none", "none"])
-                    pass
+                    print "** No data returned!!!"
+                    return no_results
+            
             else:
-                print "\n--> ReTry OLS...", search_value, params, "\n"
-                get_ols_results(search_value, params)
+                # TODO: Handle case when EFO term is not yet in production EFO and OLS
+                # and OLS 500 return error
+                # print "\n--> ReTry OLS...", term_iri_double_encoded, "\n"
+                # get_ols_term(term_iri_double_encoded)
+                return no_results
         
         except requests.exceptions.RequestException as e:
             print e
