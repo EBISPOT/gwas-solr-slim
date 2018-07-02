@@ -154,14 +154,16 @@ def format_data(data, data_type):
     publication_attr_list = ['id', 'pmid', 'journal', 'title', \
         'publicationDate', 'resourcename', 'author', 'author_s', \
         'authorAscii', 'authorAscii_s', 'authorsList', \
-        'association_cnt', 'study_cnt']
+        'associationCount', 'studyCount']
 
 
     study_attr_list = ['id', 'accessionId', 'title', 'resourcename', \
         'platform', 'ancestralGroups', 'traitName_s', 'traitName', \
         'associationCount']
 
-    trait_attr_list = ['id', 'trait', 'resourcename', ]
+    trait_attr_list = ['id', 'mappedLabel', 'mappedUri', 'studyCount', \
+        'resourcename', 'traitName_s', 'traitName', 'associationCount', \
+        'shortForm', 'synonyms']
 
 
     for data_row in tqdm(data, desc='Format data'):
@@ -202,6 +204,26 @@ def format_data(data, data_type):
 
             with open(path, 'w') as outfile:
                 outfile.write(jsonData)
+
+
+        # Create Trait documents
+        if data_type in ['trait', 'all']:
+            data_dict = dict(zip(trait_attr_list, data_row))
+
+            data_dict['id'] = data_row[4]+":"+str(data_row[0])
+
+            data_solr_doc.append(data_dict)
+            data_dict = {}
+
+            jsonData = json.dumps(data_solr_doc)
+
+            my_path = os.path.abspath(os.path.dirname(__file__))
+            path = os.path.join(my_path, "data/trait_data.json")
+
+            with open(path, 'w') as outfile:
+                outfile.write(jsonData)
+
+
 
 
 
@@ -391,7 +413,7 @@ def get_disease_trait():
     
     # Only select EFOs that are already assigned to Studies
     efo_sql = """
-        SELECT DISTINCT(ET.ID), ET.TRAIT, ET.URI, COUNT(S.ID) AS NUM_SUDIES, 'trait' as resourcename
+        SELECT DISTINCT(ET.ID), ET.TRAIT, ET.URI, COUNT(S.ID), 'trait' as resourcename
         FROM STUDY S, EFO_TRAIT ET, STUDY_EFO_TRAIT SETR
         WHERE S.ID=SETR.STUDY_ID and SETR.EFO_TRAIT_ID=ET.ID
         GROUP BY ET.ID, ET.TRAIT, 'trait', ET.URI
@@ -474,21 +496,25 @@ def get_disease_trait():
 
                 if not ols_term_data['iri'] == None:
                     mapped_uri = [ols_term_data['iri'].encode('utf-8')]
-                    mapped_trait.append(mapped_uri)
+                    # mapped_trait.append(mapped_uri) - this also comes from the db
 
+                    # use this or from db, note is entered manually into db?
                     short_form = [ols_term_data['short_form'].encode('utf-8')]
                     mapped_trait.append(short_form)
 
+                    # use this or from db?
                     label = [ols_term_data['label'].encode('utf-8')]
-                    mapped_trait.append(label)
+                    # mapped_trait.append(label)
 
-                    # str(item) for item in list]
+
                     if not ols_term_data['synonyms'] == None:
                         synonyms = [synonym.encode('utf-8') for synonym in ols_term_data['synonyms']]
                         mapped_trait.append(synonyms)
                     else: 
                         synonyms = []
                         mapped_trait.append(synonyms)
+
+                    # TODO: Add parent terms
                 else:
                     # add placeholder data
                     for item in range(4):
@@ -557,7 +583,7 @@ if __name__ == '__main__':
         format_data(study_data, study_data_type)
 
 
-    # Create EFO documents
+    # Create EFO documents, are these needed for labs pages?
     # efo_data = get_efo_data()
 
 
@@ -565,9 +591,7 @@ if __name__ == '__main__':
     if args.data_type in ['trait', 'all']:
         trait_data_type  = 'trait'
         trait_data = get_disease_trait()
-        # format_data(trait_data, trait_data_type)
-
-
+        format_data(trait_data, trait_data_type)
 
     
 
