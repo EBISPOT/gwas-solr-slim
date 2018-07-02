@@ -1,4 +1,4 @@
-## Activate Python venv for the script - uncomment to run script on commandline
+# Activate Python venv for the script - uncomment to run script on commandline
 activate_this_file = "/path/to/bin/activate_this.py"
 execfile(activate_this_file, dict(__file__ = activate_this_file))
 
@@ -16,6 +16,7 @@ sys.path.insert(0, '/path/to/gwas_data_sources')
 import gwas_data_sources
 
 import OLSData
+import DBConnection
 
 
 def get_publicaton_data():
@@ -165,6 +166,9 @@ def format_data(data, data_type):
         'resourcename', 'traitName_s', 'traitName', 'associationCount', \
         'shortForm', 'synonyms', 'parent']
 
+    association_attr_list = ['id', 'rsId', 'snpType', 'resourcename', \
+        'chromosomeName', 'chromosomePosition', 'region']
+
 
     for data_row in tqdm(data, desc='Format data'):
         data_row = list(data_row)
@@ -223,6 +227,23 @@ def format_data(data, data_type):
             with open(path, 'w') as outfile:
                 outfile.write(jsonData)
 
+
+        # Create association documents
+        if data_type in ['association', 'all']:
+            data_dict = dict(zip(association_attr_list, data_row))
+
+            data_dict['id'] = data_row[3]+":"+str(data_row[0])
+
+            data_solr_doc.append(data_dict)
+            data_dict = {}
+
+            jsonData = json.dumps(data_solr_doc)
+
+            my_path = os.path.abspath(os.path.dirname(__file__))
+            path = os.path.join(my_path, "data/association_data.json")
+
+            with open(path, 'w') as outfile:
+                outfile.write(jsonData)
 
 
 
@@ -541,6 +562,81 @@ def get_disease_trait():
 
 
 
+def get_association_data():
+    '''
+    Get Association data for Solr document.
+    '''
+
+    # List of queries
+    snp_sql = """
+        SELECT SNP.ID, SNP.RS_ID, SNP.FUNCTIONAL_CLASS, 'association' as resourcename
+        FROM SINGLE_NUCLEOTIDE_POLYMORPHISM SNP
+    """
+
+    snp_location_sql = """
+        SELECT L.CHROMOSOME_NAME, L.CHROMOSOME_POSITION, R.NAME
+        FROM LOCATION L, SNP_LOCATION SL, SINGLE_NUCLEOTIDE_POLYMORPHISM SNP, REGION R
+        WHERE L.ID=SL.LOCATION_ID and SL.SNP_ID=SNP.ID and L.REGION_ID=R.ID 
+            and SNP.ID= :snp_id
+    """
+
+    # TODO: Abstract out Database connection information
+    # DBConnection.DBConnection(DATABASE_NAME)
+
+    all_association_data = []
+
+    try:
+        ip, port, sid, username, password = gwas_data_sources.get_db_properties(DATABASE_NAME)
+        dsn_tns = cx_Oracle.makedsn(ip, port, sid)
+        connection = cx_Oracle.connect(username, password, dsn_tns)
+
+
+        with contextlib.closing(connection.cursor()) as cursor:
+
+            cursor.execute(snp_sql)
+
+            association_data = cursor.fetchall()
+
+            for association in tqdm(association_data, desc='Get Association data'):
+                association = list(association)
+                # print "** SNP: ", association
+
+                ############################
+                # Get Location information
+                ############################
+                cursor.prepare(snp_location_sql)
+                r = cursor.execute(None, {'snp_id': association[0]})
+                all_snp_locations = cursor.fetchall()
+                # print "** Assoc Location: ", all_snp_locations
+
+                # add snp location to association data, 
+                # chromosome, position, region
+                if not all_snp_locations:
+                    # add placeholder values
+                    # NOTE: Current Solr data does not include field when value is null
+                    for item in range(3):
+                        association.append(None)
+                else:
+                    association.append(all_snp_locations[0][0])
+                    association.append(all_snp_locations[0][1])
+                    association.append(all_snp_locations[0][2])
+
+
+                all_association_data.append(association)
+
+
+        # print "** All Association: ", all_association_data
+
+        connection.close()
+
+        return all_association_data
+
+    except cx_Oracle.DatabaseError, exception:
+        print exception
+
+
+
+
 
 def test_format():
     with open('publication_data.json') as f:
@@ -565,7 +661,7 @@ if __name__ == '__main__':
     parser.add_argument('--database', default='SPOTREL', choices=['DEV3', 'SPOTREL'], 
                         help='Run as (default: SPOTREL).')
     parser.add_argument('--data_type', default='publication', \
-                        choices=['publication', 'study', 'trait', 'all'],
+                        choices=['publication', 'study', 'trait', 'association', 'all'],
                         help='Run as (default: publication).')
     args = parser.parse_args()
 
@@ -596,6 +692,14 @@ if __name__ == '__main__':
         trait_data_type  = 'trait'
         trait_data = get_disease_trait()
         format_data(trait_data, trait_data_type)
+
+
+    # Create Association documents
+    if args.data_type in ['association', 'all']:
+        association_data_type  = 'association'
+        association_data = get_association_data()
+        format_data(association_data, association_data_type)
+
 
     
 
