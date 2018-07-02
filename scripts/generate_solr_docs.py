@@ -1,4 +1,4 @@
-# Activate Python venv for the script - uncomment to run script on commandline
+## Activate Python venv for the script - uncomment to run script on commandline
 activate_this_file = "/path/to/bin/activate_this.py"
 execfile(activate_this_file, dict(__file__ = activate_this_file))
 
@@ -163,7 +163,7 @@ def format_data(data, data_type):
 
     trait_attr_list = ['id', 'mappedLabel', 'mappedUri', 'studyCount', \
         'resourcename', 'traitName_s', 'traitName', 'associationCount', \
-        'shortForm', 'synonyms']
+        'shortForm', 'synonyms', 'parent']
 
 
     for data_row in tqdm(data, desc='Format data'):
@@ -492,7 +492,6 @@ def get_disease_trait():
                 ols_data = OLSData.OLSData(mapped_trait[2])
                 ols_term_data = ols_data.get_ols_term()
 
-                # print "** Returned OLS Data: ", ols_term_data
 
                 if not ols_term_data['iri'] == None:
                     mapped_uri = [ols_term_data['iri'].encode('utf-8')]
@@ -514,7 +513,12 @@ def get_disease_trait():
                         synonyms = []
                         mapped_trait.append(synonyms)
 
-                    # TODO: Add parent terms
+
+                    if not ols_term_data['ancestors'] == None:
+                        ancestor_data = OLSData.OLSData(ols_term_data['ancestors'])
+                        ancestor_terms = [ancestor.encode('utf-8') for ancestor in ancestor_data.get_ancestors()]
+                        mapped_trait.append(ancestor_terms)
+
                 else:
                     # add placeholder data
                     for item in range(4):
