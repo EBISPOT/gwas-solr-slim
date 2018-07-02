@@ -3,39 +3,56 @@ class DataFormatter:
     Format results into JSON for further analysis.
     """
 
-    def __init__(self, attr_type, num_results, data):
-        self.attr_type = attr_type
-        self.num_results = num_results
+    def __init__(self, data):
         self.data = data
 
 
-    def create_term_result_obj(self):
-        formatted_attr_type = self.attr_type.lower()
-        formatted_attr_type = formatted_attr_type.replace(" ", "_")
+    def get_term_information(self):
+        term_result = self.data
 
-        value_obj = {}
         results_list = []
+        result_obj = {}
+
+        keys = term_result.keys()
         
-        for term_result in self.data:
-            result_obj = {}
+        label_key = "label"
+        iri_key = "iri"
+        synonyms_key = "synonyms"
+        short_form_key = "short_form"
+        ancestors = "ancestors"
 
-            keys = term_result.keys()
-            # op_key = "ontology_prefix"
-            label_key = "label"
-            iri_key = "iri"
-            synonym_key = "synonym"
 
-            if op_key in keys:
-                result_obj[op_key] = term_result[op_key]
-            if label_key in keys:
-                result_obj[label_key] = term_result[label_key]
-            if iri_key in keys:
-                result_obj[iri_key] = term_result[iri_key]
-            if synonym_key in keys:
-                result_obj[synonym_key] = term_result[synonym_key]
-            
-            results_list.append(result_obj)
+        if label_key in keys:
+            result_obj[label_key] = term_result[label_key]
+        if iri_key in keys:
+            result_obj[iri_key] = term_result[iri_key]
+        if synonyms_key in keys:
+            result_obj[synonyms_key] = term_result[synonyms_key]
+        if short_form_key in keys:
+            result_obj[short_form_key] = term_result[short_form_key]
 
-        value_obj["results"] = results_list
+        # Get link for ancestors
+        result_obj[ancestors] = term_result['_links']['ancestors']['href']
 
-        return value_obj
+        results_list.append(result_obj)
+
+        return result_obj
+
+
+    def get_ancestor_labels(self):
+        '''
+        Parse and return only term labels from the OLS "ancestors" link.
+        '''
+
+        ancestors = self.data
+
+        ancestor_labels = []
+
+        for term in ancestors['_embedded']['terms']:
+            # TODO: Do not include ontology metadata 
+            # terms, e.g. Thing, disposition, experimental factor ontology
+            ancestor_labels.append(term['label'])
+
+        return ancestor_labels
+
+

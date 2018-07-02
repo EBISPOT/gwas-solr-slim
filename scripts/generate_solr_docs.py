@@ -8,13 +8,15 @@ import argparse
 import sys
 from tqdm import tqdm
 import json
-import csv
-from pprint import pprint
+# import csv
+# from pprint import pprint
+import os.path
 
 sys.path.insert(0, '/path/to/gwas_data_sources')
 import gwas_data_sources
 
 import OLSData
+import DBConnection
 
 
 def get_publicaton_data():
@@ -24,21 +26,34 @@ def get_publicaton_data():
 
     # List of queries
     publication_sql = """
-        SELECT DISTINCT(P.PUBMED_ID), P.PUBLICATION, A.FULLNAME_STANDARD, A.ORCID, 
-            P.TITLE, TO_CHAR(P.PUBLICATION_DATE, 'yyyy-mm-dd'), 'publication' as resourcename
-        FROM PUBLICATION P, AUTHOR A, STUDY S, HOUSEKEEPING H
-        WHERE P.FIRST_AUTHOR_ID=A.ID
-            and S.PUBLICATION_ID=P.ID and S.HOUSEKEEPING_ID=H.ID 
-            and H.IS_PUBLISHED=1
+        SELECT P.ID, P.PUBMED_ID, P.PUBLICATION, P.TITLE,
+            TO_CHAR(P.PUBLICATION_DATE, 'yyyy-mm-dd'), 'publication' as resourcename
+        FROM PUBLICATION P
     """
 
 
     publication_author_list_sql = """
-        SELECT A.FULLNAME_STANDARD
+        SELECT A.FULLNAME, A.FULLNAME_STANDARD, PA.SORT, A.ORCID
         FROM PUBLICATION P, AUTHOR A, PUBLICATION_AUTHORS PA
         WHERE P.ID=PA.PUBLICATION_ID and PA.AUTHOR_ID=A.ID
               and P.PUBMED_ID= :pubmed_id
         ORDER BY PA.SORT ASC
+    """
+
+
+    publication_association_cnt_sql = """
+        SELECT COUNT(A.ID)
+        FROM STUDY S, PUBLICATION P, ASSOCIATION A
+        WHERE S.PUBLICATION_ID=P.ID and A.STUDY_ID=S.ID
+            and P.PUBMED_ID= :pubmed_id
+    """
+
+
+    publication_study_cnt_sql = """
+        SELECT COUNT(S.ID)
+        FROM STUDY S, PUBLICATION P
+        WHERE S.PUBLICATION_ID=P.ID
+            and P.PUBMED_ID= :pubmed_id
     """
 
 
@@ -49,50 +64,81 @@ def get_publicaton_data():
         dsn_tns = cx_Oracle.makedsn(ip, port, sid)
         connection = cx_Oracle.connect(username, password, dsn_tns)
 
-        # cursor = connection.cursor()
         with contextlib.closing(connection.cursor()) as cursor:
 
             cursor.execute(publication_sql)
 
             publication_data = cursor.fetchall()
 
-            count = 0
-            # unique_id = {}
-            for publication in tqdm(publication_data):
+
+            for publication in tqdm(publication_data, desc='Get Publication data'):
                 publication = list(publication)
-                count += 1
 
-                # get author list
+                ############################
+                # Get Author data
+                ############################
                 cursor.prepare(publication_author_list_sql)                
-                r = cursor.execute(None, {'pubmed_id': publication[0]})
-                all_authors = cursor.fetchall()
+                r = cursor.execute(None, {'pubmed_id': publication[1]})
+                author_data = cursor.fetchall()
 
-                # print "** PMID: ", publication[0]
-                # print "** All-Authors: ", all_authors
+                # create author field data
+                first_author = [author_data[0][0]]
+                publication.append(first_author)
 
-                authors = []
-                for pmid_author in all_authors:
-                    # convert to string and remove trailing space and comma
-                    author = str(pmid_author[0])
-                    authors.append(author)
-                 
-                # print "** Authors: ", authors   
+                author_s = author_data[0][0]
+                publication.append(author_s)
+
+                author_ascii = [author_data[0][1]]
+                publication.append(author_ascii)
+
+                author_ascii_s = author_data[0][1]
+                publication.append(author_ascii_s)
+
+                if author_data[0][3] is None:
+                    author_orcid = 'NA'
+                else:   
+                    author_orcid = author_data[0][3] 
                 
-                # add authors to publication data
-                publication.append(authors)
-                # print "** Pub: ", publication, "\n"
+                authorList = []
+                for author in author_data:
+                    # create author list, e.g. "Grallert H | Grallert H | 5 | ORCID"
+                    author_formatted = str(author[0])+" | "+str(author[1])+\
+                        " | "+str(author[2])+" | "+author_orcid
+                    authorList.append(author_formatted)
+                
+                # add authorList to publication data
+                publication.append(authorList)
 
-                # add unique identifier to the record
-                # unique_id = 'publication'+str(count)
-                # publication.append(unique_id)
 
-                # add publication data to list of all publication data
+                ##########################
+                # Get Association count 
+                ##########################
+                cursor.prepare(publication_association_cnt_sql)                
+                r = cursor.execute(None, {'pubmed_id': publication[1]})
+                association_cnt = cursor.fetchone()
+
+                publication.append(association_cnt)
+
+
+                #########################################
+                # Get number of Studies per Publication
+                #########################################
+                cursor.prepare(publication_study_cnt_sql)                
+                r = cursor.execute(None, {'pubmed_id': publication[1]})
+                study_cnt = cursor.fetchone()
+
+                publication.append(study_cnt)
+
+
+                ######################################
+                # Add publication data document to
+                # list of all publication data docs
+                ######################################
                 all_publication_data.append(publication)
+        
 
-        # cursor.close()
         connection.close()
 
-        # print "** Num Rows: ", len(all_publication_data), all_publication_data[0]
         return all_publication_data
 
     except cx_Oracle.DatabaseError, exception:
@@ -101,68 +147,116 @@ def get_publicaton_data():
 
 def format_data(data, data_type):
     '''
-    Convert list of data to JSON.
+    Convert list of data to JSON and write to file.
     '''
     data_dict = {}
     data_solr_doc = []
-    
-    # Use counts to generate unique id
-    count = 0
 
-    for data_row in data:
+    publication_attr_list = ['id', 'pmid', 'journal', 'title', \
+        'publicationDate', 'resourcename', 'author', 'author_s', \
+        'authorAscii', 'authorAscii_s', 'authorsList', \
+        'associationCount', 'studyCount']
+
+
+    study_attr_list = ['id', 'accessionId', 'title', 'resourcename', \
+        'platform', 'ancestralGroups', 'traitName_s', 'traitName', \
+        'associationCount']
+
+    trait_attr_list = ['id', 'mappedLabel', 'mappedUri', 'studyCount', \
+        'resourcename', 'traitName_s', 'traitName', 'associationCount', \
+        'shortForm', 'synonyms', 'parent']
+
+    association_attr_list = ['id', 'rsId', 'snpType', 'resourcename', \
+        'chromosomeName', 'chromosomePosition', 'region']
+
+
+    for data_row in tqdm(data, desc='Format data'):
         data_row = list(data_row)
-        # print "** Row: ", len(data_row)
-        count += 1
 
-        my_keys = []
+        # Create Publication documents
+        if data_type in ['publication', 'all']:
 
-        publication_attr_list = ['pmid', 'journal', 'author', 'orcid', 'title', 'publicationDate', 'resourcename', 'authorList']
-        # print "** PAL: ", len(publication_attr_list)
-        # for item in row:
-            # count += 1
-        #     print "** DataItem: ", item
-            # data_dict[count] = item
-        
-        if data_type == 'publication':
-            my_keys = publication_attr_list
+            data_dict = dict(zip(publication_attr_list, data_row))
 
-            data_dict = dict(zip(my_keys, data_row))
-            # print "** Dict: ", data_dict
-
-
-            # Add unique id to document
-            unique_id = 'publication:'+str(count)
-            # print "** UniqID: ", unique_id
-            data_dict['id'] = unique_id
-
-            # Should resourcename be added here vs. in the query, is it more efficient here? 
+            data_dict['id'] = data_row[5]+":"+str(data_row[0])
 
             data_solr_doc.append(data_dict)
             data_dict = {}
-            # count = 0
 
-    # print json.dumps(publication_solr_doc)
-    jsonData = json.dumps(data_solr_doc)
-    # print type(jsonData)
+            jsonData = json.dumps(data_solr_doc)
+
+            my_path = os.path.abspath(os.path.dirname(__file__))
+            path = os.path.join(my_path, "data/publication_data.json")
+
+            with open(path, 'w') as outfile:
+                outfile.write(jsonData)
 
 
+        # Create Study documents
+        if data_type in ['study', 'all']:
+            data_dict = dict(zip(study_attr_list, data_row))
 
-    with open ('publication_data.json', 'w') as outfile:
-        # json.dump(publication_solr_doc, outfile)
-        outfile.write(jsonData)
+            data_dict['id'] = data_row[3]+":"+str(data_row[0])
+
+            data_solr_doc.append(data_dict)
+            data_dict = {}
+
+            jsonData = json.dumps(data_solr_doc)
+
+            my_path = os.path.abspath(os.path.dirname(__file__))
+            path = os.path.join(my_path, "data/study_data.json")
+
+            with open(path, 'w') as outfile:
+                outfile.write(jsonData)
+
+
+        # Create Trait documents
+        if data_type in ['trait', 'all']:
+            data_dict = dict(zip(trait_attr_list, data_row))
+
+            data_dict['id'] = data_row[4]+":"+str(data_row[0])
+
+            data_solr_doc.append(data_dict)
+            data_dict = {}
+
+            jsonData = json.dumps(data_solr_doc)
+
+            my_path = os.path.abspath(os.path.dirname(__file__))
+            path = os.path.join(my_path, "data/trait_data.json")
+
+            with open(path, 'w') as outfile:
+                outfile.write(jsonData)
+
+
+        # Create association documents
+        if data_type in ['association', 'all']:
+            data_dict = dict(zip(association_attr_list, data_row))
+
+            data_dict['id'] = data_row[3]+":"+str(data_row[0])
+
+            data_solr_doc.append(data_dict)
+            data_dict = {}
+
+            jsonData = json.dumps(data_solr_doc)
+
+            my_path = os.path.abspath(os.path.dirname(__file__))
+            path = os.path.join(my_path, "data/association_data.json")
+
+            with open(path, 'w') as outfile:
+                outfile.write(jsonData)
+
 
 
 
 def get_study_data():
     '''
-    Get Stuy data for Solr document.
+    Get Study data for Solr document.
     '''
 
     # List of queries
     study_sql = """
-        SELECT S.ID, S.ACCESSION_ID, S.TITLE, 'study' as resourcename
+        SELECT S.ID, S.ACCESSION_ID, 'TODO-Title-Generation' as title, 'study' as resourcename
         FROM STUDY S
-        WHERE ROWNUM <= 3
     """
 
     study_platform_types_sql = """
@@ -174,22 +268,27 @@ def get_study_data():
     """
 
     study_ancestral_groups_sql = """
-        SELECT DISTINCT S.ID , listagg(AG.ANCESTRAL_GROUP, ', ') WITHIN GROUP (ORDER BY AG.ANCESTRAL_GROUP) AS ANCESTRAL_GROUP
-        FROM STUDY S, ANCESTRY A, ANCESTRY_ANCESTRAL_GROUP AAG, ANCESTRAL_GROUP AG
-        WHERE S.ID=A.STUDY_ID and A.ID=AAG.ANCESTRY_ID and AAG.ANCESTRAL_GROUP_ID=AG.ID
-            and S.ID= :study_id
-        GROUP BY S.ID
+        SELECT  x.ID, listagg(x.ANCESTRAL_GROUP, ', ') WITHIN GROUP (ORDER BY x.ANCESTRAL_GROUP)
+        FROM (
+                SELECT DISTINCT S.ID, AG.ANCESTRAL_GROUP
+                FROM STUDY S, ANCESTRY A, ANCESTRY_ANCESTRAL_GROUP AAG, ANCESTRAL_GROUP AG
+                WHERE S.ID=A.STUDY_ID and A.ID=AAG.ANCESTRY_ID and AAG.ANCESTRAL_GROUP_ID=AG.ID
+                    and S.ID= :study_id
+            ) x
+        GROUP BY x.ID
     """
 
 
     study_reported_trait_sql = """
-        SELECT S.ID, DT.TRAIT
+        SELECT DISTINCT S.ID, listagg(DT.TRAIT, ', ') WITHIN GROUP (ORDER BY DT.TRAIT) AS TRAITS
         FROM STUDY S, STUDY_DISEASE_TRAIT SDT, DISEASE_TRAIT DT
         WHERE S.ID=SDT.STUDY_ID and SDT.DISEASE_TRAIT_ID=DT.ID
-            and S.ID= :study_id
-        """
+              and S.ID= :study_id
+        GROUP BY S.ID
+    """
 
-    study_num_associations_sql = """
+
+    study_associations_cnt_sql = """
         SELECT S.ID, COUNT(ASSOC.ID)
         FROM STUDY S, ASSOCIATION ASSOC
         WHERE S.ID=ASSOC.STUDY_ID
@@ -203,6 +302,7 @@ def get_study_data():
 
     try:
         ip, port, sid, username, password = gwas_data_sources.get_db_properties(DATABASE_NAME)
+
         dsn_tns = cx_Oracle.makedsn(ip, port, sid)
         connection = cx_Oracle.connect(username, password, dsn_tns)
 
@@ -213,30 +313,100 @@ def get_study_data():
 
             study_data = cursor.fetchall()
 
-            for study in tqdm(study_data):
+            studies_missing_ancestral_groups = []
+            studies_missing_associations = []
+
+            for study in tqdm(study_data, desc='Get Study data'):
                 study = list(study)
 
-                # get plaform list
-                cursor.prepare(study_platform_types_sql)                
+
+                ######################
+                # Get platform list
+                ######################
+                cursor.prepare(study_platform_types_sql)
                 r = cursor.execute(None, {'study_id': study[0]})
                 platforms = cursor.fetchall()
-                print "** Platforms: ", platforms, type(platforms)
-                # Do null values occur for platform?
 
-                # add platforms to study data
-                study.append(platforms[0][1])
+
+                # Handle cases where there are no values for Platform
+                if not platforms:
+                    platform = 'NR'
+                else:
+                    platform = platforms[0][1]
+
+                # add platforms (as string) to study data
+                study.append(platform)
                 
 
-                # TODO: Make queries to other datatypes, e.g. ancestral_group, reported_trait, number of associations
+                #######################
+                # Get Ancestral groups
+                #######################
+                study_ancestral_groups = []
+
+                cursor.prepare(study_ancestral_groups_sql)
+                r = cursor.execute(None, {'study_id': study[0]})
+                ancestral_groups = cursor.fetchall()
+
+                if not ancestral_groups:
+                    study_ancestral_groups = 'NR'
+                    studies_missing_ancestral_groups.append(study[1])
+                else:
+                    study_ancestral_groups = [ancestral_groups[0][1]]
+
+                # add ancestry information to study data
+                study.append(study_ancestral_groups)
 
 
-                # add study data to list of all study data
+                #######################
+                # Get Reported Trait
+                #######################
+                study_reported_traits = []
+
+                cursor.prepare(study_reported_trait_sql)
+                r = cursor.execute(None, {'study_id': study[0]})
+                reported_traits = cursor.fetchall()
+
+                # add trait as string
+                study.append(reported_traits[0][1])
+
+                # add trait as list
+                study.append([reported_traits[0][1]])
+
+
+                ###############################
+                # Get Study-Association count
+                ###############################
+                cursor.prepare(study_associations_cnt_sql)
+                r = cursor.execute(None, {'study_id': study[0]})
+                association_cnt = cursor.fetchall()
+
+                if not association_cnt:
+                    association_cnt = 0
+                    study.append(association_cnt)
+
+                    if study[1] not in studies_missing_associations:
+                        studies_missing_associations.append(study[1])
+                else:
+                    study.append(association_cnt[0][1])
+
+
+
+                #############################################
+                # Add study data to list of all study data
+                #############################################
                 all_study_data.append(study)
 
-        # cursor.close()
+
         connection.close()
 
-        # print "** Num Rows: ", len(all_study_data), all_study_data[0]
+        # QA Checks of Association and Ancestral Group information
+        # print "** All Studies missing Ancestral groups: ", \
+        #     len(studies_missing_ancestral_groups), studies_missing_ancestral_groups
+
+        # print "** All Studies missing Associations: ", \
+        #     len(studies_missing_associations), studies_missing_associations
+
+
         return all_study_data
 
     except cx_Oracle.DatabaseError, exception:
@@ -256,73 +426,214 @@ def get_efo_data():
     ols_data.get_ols_results()
 
 
+
 def get_disease_trait():
     '''
-    Given each unique reported disease trait, get all mapped/EFO trait information.
+    Given each EFO trait, get all Reported trait information.
     '''
     
+    # Only select EFOs that are already assigned to Studies
     efo_sql = """
-
+        SELECT DISTINCT(ET.ID), ET.TRAIT, ET.URI, COUNT(S.ID), 'trait' as resourcename
+        FROM STUDY S, EFO_TRAIT ET, STUDY_EFO_TRAIT SETR
+        WHERE S.ID=SETR.STUDY_ID and SETR.EFO_TRAIT_ID=ET.ID
+        GROUP BY ET.ID, ET.TRAIT, 'trait', ET.URI
     """
 
-    disease_sql = """
-        SELECT DT.ID, DT.TRAIT, 'diseaseTrait' as resourcename
-        FROM DISEASE_TRAIT DT
-    """
 
-    mapped_trait_sql = """
-        SELECT ET.TRAIT, DT.TRAIT
+    reported_trait_sql = """
+        SELECT DISTINCT(ET.ID), listagg(DT.TRAIT, ', ') WITHIN GROUP (ORDER BY DT.TRAIT)
         FROM STUDY S, EFO_TRAIT ET, DISEASE_TRAIT DT, STUDY_EFO_TRAIT SETR, STUDY_DISEASE_TRAIT SDT
         WHERE S.ID=SETR.STUDY_ID and SETR.EFO_TRAIT_ID=ET.ID 
-            and S.ID=SDT.STUDY_ID and SDT.DISEASE_TRAIT_ID=DT.ID
-            and DT.TRAIT = :disease_trait
+            and S.ID=SDT.STUDY_ID and SDT.DISEASE_TRAIT_ID=DT.ID 
+            and ET.ID = :trait_id
+        GROUP BY ET.ID
     """
 
-    all_disease_data = []
+    trait_association_cnt_sql = """
+        SELECT COUNT(ET.ID)
+        FROM EFO_TRAIT ET, ASSOCIATION_EFO_TRAIT AET, ASSOCIATION A
+        WHERE ET.ID=AET.EFO_TRAIT_ID and AET.ASSOCIATION_ID=A.ID
+            and ET.ID = :trait_id
+        GROUP BY ET.TRAIT
+    """
+
+
+    all_trait_data = []
 
     try:
         ip, port, sid, username, password = gwas_data_sources.get_db_properties(DATABASE_NAME)
         dsn_tns = cx_Oracle.makedsn(ip, port, sid)
         connection = cx_Oracle.connect(username, password, dsn_tns)
 
-        # cursor = connection.cursor()
+
         with contextlib.closing(connection.cursor()) as cursor:
 
-            cursor.execute(disease_sql)
+            cursor.execute(efo_sql)
 
-            disease_trait_data = cursor.fetchall()
+            mapped_trait_data = cursor.fetchall()
 
-            for reported_trait in tqdm(disease_trait_data):
-                reported_trait = list(reported_trait)
-                print "** Reported disease trait: ", reported_trait
+            for mapped_trait in tqdm(mapped_trait_data, desc='Get EFO/Mapped trait data'):
+                mapped_trait = list(mapped_trait)
+                # print "** Mapped EFO trait: ", mapped_trait
 
-                # get mapped/efo trait
-                cursor.prepare(mapped_trait_sql)                
-                r = cursor.execute(None, {'disease_trait': reported_trait[1]})
-                all_mapped_traits = cursor.fetchall()
-                # print "** Mapped trait(s): ", all_mapped_traits
+                #########################
+                # Get reported trait(s)
+                #########################
+                cursor.prepare(reported_trait_sql)
+                r = cursor.execute(None, {'trait_id': mapped_trait[0]})
+                all_reported_traits = cursor.fetchall()
+                # print "** Reported trait(s): ", all_reported_traits, "\n", [all_reported_traits[0][1]]
 
-                # add EFOs to disease trait data, this can return >1 result
-                for mapped_trait in all_mapped_traits:
-                    print "** MT: ", mapped_trait[0]
-                    reported_trait.append(mapped_trait[0])
+                # add reported trait as string
+                mapped_trait.append(all_reported_traits[0][1])
+
+                # add reported trait as list
+                mapped_trait.append([all_reported_traits[0][1]])
+
                 
-                print "\n"
+                #######################################
+                # Get count of associations per trait
+                #######################################
+                cursor.prepare(trait_association_cnt_sql)
+                r = cursor.execute(None, {'trait_id': mapped_trait[0]})
+                trait_assoc_cnt = cursor.fetchone()
+                # print "** Assoc CNT: ", trait_assoc_cnt
 
-                # TODO: Add data for EFOs from OLS
+                if not trait_assoc_cnt:
+                    trait_assoc_cnt = 0
+                    mapped_trait.append(trait_assoc_cnt)
+                else:
+                    mapped_trait.append(trait_assoc_cnt[0])
 
 
-                # add study data to list of all study data
-                all_disease_data.append(reported_trait)
+                #####################################
+                # Get EFO term information from OLS
+                #####################################
+                ols_data = OLSData.OLSData(mapped_trait[2])
+                ols_term_data = ols_data.get_ols_term()
 
-        # cursor.close()
+
+                if not ols_term_data['iri'] == None:
+                    mapped_uri = [ols_term_data['iri'].encode('utf-8')]
+                    # mapped_trait.append(mapped_uri) - this also comes from the db
+
+                    # use this or from db, note is entered manually into db?
+                    short_form = [ols_term_data['short_form'].encode('utf-8')]
+                    mapped_trait.append(short_form)
+
+                    # use this or from db?
+                    label = [ols_term_data['label'].encode('utf-8')]
+                    # mapped_trait.append(label)
+
+
+                    if not ols_term_data['synonyms'] == None:
+                        synonyms = [synonym.encode('utf-8') for synonym in ols_term_data['synonyms']]
+                        mapped_trait.append(synonyms)
+                    else: 
+                        synonyms = []
+                        mapped_trait.append(synonyms)
+
+
+                    if not ols_term_data['ancestors'] == None:
+                        ancestor_data = OLSData.OLSData(ols_term_data['ancestors'])
+                        ancestor_terms = [ancestor.encode('utf-8') for ancestor in ancestor_data.get_ancestors()]
+                        mapped_trait.append(ancestor_terms)
+
+                else:
+                    # add placeholder data
+                    for item in range(4):
+                        mapped_trait.append(None)
+
+
+
+                ############################################
+                # Add trait data to list of all trait data
+                ############################################
+                all_trait_data.append(mapped_trait)
+
+
         connection.close()
 
-        # print "** Num Rows: ", len(all_study_data), all_study_data[0]
-        return all_disease_data
+        return all_trait_data
 
     except cx_Oracle.DatabaseError, exception:
         print exception
+
+
+
+def get_association_data():
+    '''
+    Get Association data for Solr document.
+    '''
+
+    # List of queries
+    snp_sql = """
+        SELECT SNP.ID, SNP.RS_ID, SNP.FUNCTIONAL_CLASS, 'association' as resourcename
+        FROM SINGLE_NUCLEOTIDE_POLYMORPHISM SNP
+    """
+
+    snp_location_sql = """
+        SELECT L.CHROMOSOME_NAME, L.CHROMOSOME_POSITION, R.NAME
+        FROM LOCATION L, SNP_LOCATION SL, SINGLE_NUCLEOTIDE_POLYMORPHISM SNP, REGION R
+        WHERE L.ID=SL.LOCATION_ID and SL.SNP_ID=SNP.ID and L.REGION_ID=R.ID 
+            and SNP.ID= :snp_id
+    """
+
+    # TODO: Abstract out Database connection information
+    # DBConnection.DBConnection(DATABASE_NAME)
+
+    all_association_data = []
+
+    try:
+        ip, port, sid, username, password = gwas_data_sources.get_db_properties(DATABASE_NAME)
+        dsn_tns = cx_Oracle.makedsn(ip, port, sid)
+        connection = cx_Oracle.connect(username, password, dsn_tns)
+
+
+        with contextlib.closing(connection.cursor()) as cursor:
+
+            cursor.execute(snp_sql)
+
+            association_data = cursor.fetchall()
+
+            for association in tqdm(association_data, desc='Get Association data'):
+                association = list(association)
+                # print "** SNP: ", association
+
+                ############################
+                # Get Location information
+                ############################
+                cursor.prepare(snp_location_sql)
+                r = cursor.execute(None, {'snp_id': association[0]})
+                all_snp_locations = cursor.fetchall()
+                # print "** Assoc Location: ", all_snp_locations
+
+                # add snp location to association data, 
+                # chromosome, position, region
+                if not all_snp_locations:
+                    # add placeholder values
+                    # NOTE: Current Solr data does not include field when value is null
+                    for item in range(3):
+                        association.append(None)
+                else:
+                    association.append(all_snp_locations[0][0])
+                    association.append(all_snp_locations[0][1])
+                    association.append(all_snp_locations[0][2])
+
+
+                all_association_data.append(association)
+
+
+        # print "** All Association: ", all_association_data
+
+        connection.close()
+
+        return all_association_data
+
+    except cx_Oracle.DatabaseError, exception:
+        print exception
+
 
 
 
@@ -345,34 +656,49 @@ if __name__ == '__main__':
 
     # Commandline arguments
     parser = argparse.ArgumentParser()
-    parser.add_argument('--mode', default='debug', choices=['debug', 'production'], 
-                        help='Run as (default: debug).')
-    parser.add_argument('--database', default='DEV3', choices=['DEV3', 'SPOTREL'], 
-                        help='Run as (default: DEV3).')
+    # parser.add_argument('--mode', default='debug', choices=['debug', 'production'],
+    #                     help='Run as (default: debug).')
+    parser.add_argument('--database', default='SPOTREL', choices=['DEV3', 'SPOTREL'], 
+                        help='Run as (default: SPOTREL).')
+    parser.add_argument('--data_type', default='publication', \
+                        choices=['publication', 'study', 'trait', 'association', 'all'],
+                        help='Run as (default: publication).')
     args = parser.parse_args()
 
     global DATABASE_NAME
-    DATABASE_NAME = args.database 
+    DATABASE_NAME = args.database
 
 
     # Create Publication documents
-    publication_data = get_publicaton_data()
-    # print "** PD: ", publication_data
-    publication_data_type  = 'publication'
-
-    format_data(publication_data, publication_data_type)
+    if args.data_type in ['publication', 'all']:
+        publication_datatype  = 'publication'
+        publication_data = get_publicaton_data()
+        format_data(publication_data, publication_datatype)
 
 
     # Create Study documents
-    # study_data = get_study_data()
-    # print "** SD: ", study_data
+    if args.data_type in ['study', 'all']:
+        study_data_type  = 'study'
+        study_data = get_study_data()
+        format_data(study_data, study_data_type)
 
 
-    # Create EFO documents
+    # Create EFO documents, are these needed for labs pages?
     # efo_data = get_efo_data()
 
+
     # Create Disease Trait documents
-    # disease_trait_data = get_disease_trait()
+    if args.data_type in ['trait', 'all']:
+        trait_data_type  = 'trait'
+        trait_data = get_disease_trait()
+        format_data(trait_data, trait_data_type)
+
+
+    # Create Association documents
+    if args.data_type in ['association', 'all']:
+        association_data_type  = 'association'
+        association_data = get_association_data()
+        format_data(association_data, association_data_type)
 
 
     
