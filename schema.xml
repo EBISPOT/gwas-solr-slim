@@ -60,7 +60,7 @@
         limitations: they are currently only supported by StrField, UUIDField
         and all Trie*Fields, and depending on the field type, they might
         require the field to be single-valued, be required or have a default
-        value (check the documentation of the field type you're interested in
+        value (check the documentation of 0the field type you're interested in
         for more information)
       multiValued: true if this field may contain multiple values per document
       omitNorms: (expert) set to true to omit the norms associated with
@@ -99,12 +99,6 @@
     -->
     <field name="_root_" type="string" indexed="true" stored="false" />
 
-    <!-- Only remove the "id" field if you have a very good reason to. While not strictly
-      required, it is highly recommended. A <uniqueKey> is present in almost all Solr
-      installations. See the <uniqueKey> declaration below where <uniqueKey> is set to "id".
-    -->
-    <field name="id" type="string" indexed="true" stored="true" required="true" multiValued="false" />
-
     <!-- Common metadata fields, named specifically to match up with
          SolrCell metadata when parsing rich documents such as Word, PDF.
          Some fields are multiValued only because Tika currently may return
@@ -114,34 +108,52 @@
            "resourcename": From SolrCell request param resource.name.
            **These fields were not in the original basic config but were copied over from the old schema**
        -->
-	<!-- for all docs -->
-    <field name="resourcename" type="text_general" indexed="true" stored="true" multiValued="false" />
-    <field name="details" type="text_general" indexed="false" stored="true" multiValued="false" />
-	
-	<!--publication -->
-    <field name="pmid" type="string" indexed="true" stored="true" multiValued="false" />
-    <field name="title" type="text_general" indexed="true" stored="true" multiValued="false" />
-	<field name="journal" type="string" indexed="true" stored="true" multiValued="false" />
-    <field name="publicationDate" type="string" indexed="true" stored="true" />
-    <field name="author" type="string" indexed="true" stored="true" multiValued="false" />
-    <field name="authorAscii" type="text_general" indexed="true" stored="true" multiValued="true" />
-    <field name="orcid" type="string" indexed="true" stored="true" multiValued="false" />
-    <field name="last_modified" type="date" indexed="true" stored="true" />
-    <field name="description" type="text_general" indexed="false" stored="true" multiValued="false" />
-    <field name="authorList" type="string" indexed="false" stored="true" multiValued="true" />
+	<!-- Common, mandatory fields for all docs -->
+  <field name="resourcename" type="text_general" indexed="true" stored="true" multiValued="false" /> <!-- Added to text -->
+  <field name="details" type="text_general" indexed="false" stored="true" multiValued="false" />
+  <field name="id" type="string" indexed="true" stored="true" required="true" multiValued="false" />
+  <field name="title" type="text_general" indexed="true" stored="true" multiValued="false" />
+  <field name="link" type="text_general" indexed="false" stored="true" multiValued="false" />
 
-    <!-- GWAS catalog specific fields-->
+  <!-- Commonly used, but not mandatory fields shared by many document types -->
+  <field name="associationCount" type="int" indexed="false" stored="true" multiValued="false" />
+  <field name="studyCount" type="int" indexed="false" stored="true" multiValued="false" />
 
-    <!-- study -->
-	<field name="accessionId" type="text_general" indexed="true" stored="true" multiValued="false" />
-    <field name="platform" type="text_general" indexed="true" stored="true" multiValued="false" />
+	<!--specific fields for publication -->
+  <field name="pmid" type="string" indexed="true" stored="true" multiValued="false" />
+  <field name="journal" type="string" indexed="true" stored="true" multiValued="false" />
+  <field name="publicationDate" type="text_general" indexed="true" stored="true" />
+  <field name="author" type="text_general" indexed="true" stored="true" multiValued="true" />
+  <field name="author_s" type="text_general" indexed="true" stored="true" multiValued="false" />
+  <field name="authorAscii" type="text_general" indexed="true" stored="true" multiValued="true" />
+  <field name="authorAscii_s" type="text_general" indexed="true" stored="true" multiValued="false" />
+  <field name="authorsList" type="text_general" indexed="true" stored="true" multiValued="true" />
+  <field name="orcid" type="string" indexed="true" stored="true" multiValued="false" />
+  <field name="last_modified" type="date" indexed="true" stored="true" />
+  <field name="description" type="text_general" indexed="false" stored="true" multiValued="false" />
 
-    <!-- variant -->
-	<field name="variant" type="text_general" indexed="true" stored="true" multiValued="false" />
+  <!-- specific fields for study -->
+	<field name="accessionId" type="string" indexed="true" stored="true" multiValued="false" />
+  <field name="platform" type="string" indexed="true" stored="true" multiValued="false" />
+  <field name="traitName_s" type="text_general" indexed="true" stored="true" multiValued="false" /> <!-- mapped trait -->
+  <field name="ancestralGroups" type="text_general" indexed="true" stored="true" multiValued="true" />
+  <field name="traitName" type="text_general" indexed="true" stored="true" multiValued="true" />
 
-    <!-- EFO -->
-	<field name="reported_trait" type="text_general" indexed="true" stored="true" multiValued="false" />
+    <!-- specific fields for variant -->
+	<field name="consequence" type="text_general" indexed="true" stored="true" multiValued="false" />
+  <field name="chromosomeName" type="text_general" indexed="true" stored="true" multiValued="false" />
+  <field name="chromosomePosition" type="text_general" indexed="true" stored="true" multiValued="false" />
+  <field name="region" type="text_general" indexed="true" stored="true" multiValued="false" />
 
+  <!-- specific fields for trait -->
+  <field name="mappedUri" type="string" indexed="false" stored="true" multiValued="false" />
+  <field name="shortForm" type="string" indexed="true" stored="true" multiValued="true" />
+  <field name="parent" type="text_general" indexed="true" stored="true" multiValued="true" />
+  <field name="synonyms" type="string" indexed="true" stored="true" multiValued="true" />
+  <field name="mappedLabel" type="text_general" indexed="true" stored="true" multiValued="false" />
+
+  <!-- specific fields for gene -->
+  <!-- <field name="reported_trait" type="text_general" indexed="true" stored="true" multiValued="false" /> -->
 
     <!-- Main body of document extracted by SolrCell.
          NOTE: This field is not indexed by default, since it is also copied to "text"
@@ -168,6 +180,7 @@
     <dynamicField name="*_i" type="int" indexed="true" stored="true" />
     <dynamicField name="*_is" type="int" indexed="true" stored="true" multiValued="true" />
     <dynamicField name="*_s" type="string" indexed="true" stored="true" />
+   
     <!--<dynamicField name="*_ss" type="string"  indexed="true"  stored="true" multiValued="true"/>-->
     <dynamicField name="*_l" type="long" indexed="true" stored="true" />
     <dynamicField name="*_ls" type="long" indexed="true" stored="true" multiValued="true" />
@@ -225,12 +238,10 @@
     <!-- Text fields from SolrCell to search by default in our catch-all field -->
     <copyField source="title" dest="text" />
     <copyField source="pmid" dest="text" />
-	<copyField source="variant" dest="text" />
     <copyField source="accessionId" dest="text" />	
-	<copyField source="reported_trait" dest="text" />	
-    <copyField source="orcid" dest="text" /> 
+	  <copyField source="orcid" dest="text" /> 
     <copyField source="journal" dest="text"  />
-    <copyField source="authorList" dest="text" />
+    <copyField source="authorsList" dest="text" />
     <copyField source="author" dest="text" />
 
     <!-- Create a string version of author for faceting >
