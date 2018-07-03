@@ -18,6 +18,8 @@ import gwas_data_sources
 import OLSData
 import DBConnection
 
+import cProfile
+
 
 def get_publicaton_data():
     '''
@@ -170,80 +172,118 @@ def format_data(data, data_type):
         'chromosomeName', 'chromosomePosition', 'region']
 
 
-    for data_row in tqdm(data, desc='Format data'):
-        data_row = list(data_row)
 
-        # Create Publication documents
-        if data_type in ['publication', 'all']:
+    # Create Gene documents
+    if data_type in ['gene', 'all']:
+        # data_dict = dict(zip(gene_attr_list, data_row))
 
-            data_dict = dict(zip(publication_attr_list, data_row))
+        # data_dict['id'] = data_row[2]+":"+str(data_row[1])
 
-            data_dict['id'] = data_row[5]+":"+str(data_row[0])
+        # data_solr_doc.append(data_dict)
+        # data_dict = {}
 
-            data_solr_doc.append(data_dict)
-            data_dict = {}
+        jsonData = json.dumps(data)
 
-            jsonData = json.dumps(data_solr_doc)
+        my_path = os.path.abspath(os.path.dirname(__file__))
+        path = os.path.join(my_path, "data/gene_data.json")
 
-            my_path = os.path.abspath(os.path.dirname(__file__))
-            path = os.path.join(my_path, "data/publication_data.json")
-
-            with open(path, 'w') as outfile:
-                outfile.write(jsonData)
+        with open(path, 'w') as outfile:
+            outfile.write(jsonData)
 
 
-        # Create Study documents
-        if data_type in ['study', 'all']:
-            data_dict = dict(zip(study_attr_list, data_row))
 
-            data_dict['id'] = data_row[3]+":"+str(data_row[0])
+    # for data_row in tqdm(data, desc='Format data'):
+    #     data_row = list(data_row)
 
-            data_solr_doc.append(data_dict)
-            data_dict = {}
+    #     # Create Publication documents
+    #     if data_type in ['publication', 'all']:
 
-            jsonData = json.dumps(data_solr_doc)
+    #         data_dict = dict(zip(publication_attr_list, data_row))
 
-            my_path = os.path.abspath(os.path.dirname(__file__))
-            path = os.path.join(my_path, "data/study_data.json")
+    #         data_dict['id'] = data_row[5]+":"+str(data_row[0])
 
-            with open(path, 'w') as outfile:
-                outfile.write(jsonData)
+    #         data_solr_doc.append(data_dict)
+    #         data_dict = {}
 
+    #         jsonData = json.dumps(data_solr_doc)
 
-        # Create Trait documents
-        if data_type in ['trait', 'all']:
-            data_dict = dict(zip(trait_attr_list, data_row))
+    #         my_path = os.path.abspath(os.path.dirname(__file__))
+    #         path = os.path.join(my_path, "data/publication_data.json")
 
-            data_dict['id'] = data_row[4]+":"+str(data_row[0])
-
-            data_solr_doc.append(data_dict)
-            data_dict = {}
-
-            jsonData = json.dumps(data_solr_doc)
-
-            my_path = os.path.abspath(os.path.dirname(__file__))
-            path = os.path.join(my_path, "data/trait_data.json")
-
-            with open(path, 'w') as outfile:
-                outfile.write(jsonData)
+    #         with open(path, 'w') as outfile:
+    #             outfile.write(jsonData)
 
 
-        # Create association documents
-        if data_type in ['variant', 'all']:
-            data_dict = dict(zip(variant_attr_list, data_row))
+    #     # Create Study documents
+    #     if data_type in ['study', 'all']:
+    #         data_dict = dict(zip(study_attr_list, data_row))
 
-            data_dict['id'] = data_row[3]+":"+str(data_row[0])
+    #         data_dict['id'] = data_row[3]+":"+str(data_row[0])
 
-            data_solr_doc.append(data_dict)
-            data_dict = {}
+    #         data_solr_doc.append(data_dict)
+    #         data_dict = {}
 
-            jsonData = json.dumps(data_solr_doc)
+    #         jsonData = json.dumps(data_solr_doc)
 
-            my_path = os.path.abspath(os.path.dirname(__file__))
-            path = os.path.join(my_path, "data/variant_data.json")
+    #         my_path = os.path.abspath(os.path.dirname(__file__))
+    #         path = os.path.join(my_path, "data/study_data.json")
 
-            with open(path, 'w') as outfile:
-                outfile.write(jsonData)
+    #         with open(path, 'w') as outfile:
+    #             outfile.write(jsonData)
+
+
+    #     # Create Trait documents
+    #     if data_type in ['trait', 'all']:
+    #         data_dict = dict(zip(trait_attr_list, data_row))
+
+    #         data_dict['id'] = data_row[4]+":"+str(data_row[0])
+
+    #         data_solr_doc.append(data_dict)
+    #         data_dict = {}
+
+    #         jsonData = json.dumps(data_solr_doc)
+
+    #         my_path = os.path.abspath(os.path.dirname(__file__))
+    #         path = os.path.join(my_path, "data/trait_data.json")
+
+    #         with open(path, 'w') as outfile:
+    #             outfile.write(jsonData)
+
+
+    #     # Create variant documents
+    #     if data_type in ['variant', 'all']:
+    #         data_dict = dict(zip(variant_attr_list, data_row))
+
+    #         data_dict['id'] = data_row[3]+":"+str(data_row[0])
+
+    #         data_solr_doc.append(data_dict)
+    #         data_dict = {}
+
+    #         jsonData = json.dumps(data_solr_doc)
+
+    #         my_path = os.path.abspath(os.path.dirname(__file__))
+    #         path = os.path.join(my_path, "data/variant_data.json")
+
+    #         with open(path, 'w') as outfile:
+    #             outfile.write(jsonData)
+
+
+        # # Create gene documents
+        # if data_type in ['gene', 'all']:
+        #     data_dict = dict(zip(gene_attr_list, data_row))
+
+        #     data_dict['id'] = data_row[2]+":"+str(data_row[1])
+
+        #     data_solr_doc.append(data_dict)
+        #     data_dict = {}
+
+        #     jsonData = json.dumps(data_solr_doc)
+
+        #     my_path = os.path.abspath(os.path.dirname(__file__))
+        #     path = os.path.join(my_path, "data/gene_data.json")
+
+        #     with open(path, 'w') as outfile:
+        #         outfile.write(jsonData)
 
 
 
@@ -635,6 +675,156 @@ def get_variant_data():
         print exception
 
 
+def get_gene_data():
+    '''
+    Get Gene data for genes with associations for Solr document.
+    '''
+
+    # gene_sql = """
+    #     SELECT G.ID, G.GENE_NAME, 'gene' as resourcename 
+    #     FROM GENE G
+    # """
+
+    # Get only genes with associations, assume if a 
+    # Gene has an association it is in the Genomic Context table
+    gene_sql = """
+        SELECT DISTINCT(G.GENE_NAME), G.ID, 'gene' as resourcename
+          FROM GENE G, GENOMIC_CONTEXT GC
+        WHERE G.ID=GC.GENE_ID
+    """
+
+    ensembl_gene_sql = """
+        SELECT EG.ENSEMBL_GENE_ID 
+        FROM GENE G, GENE_ENSEMBL_GENE GEG, ENSEMBL_GENE EG 
+        WHERE G.ID=GEG.GENE_ID and GEG.ENSEMBL_GENE_ID=EG.ID 
+            and G.ID= :gene_id
+    """
+
+
+    entrez_gene_sql = """
+        SELECT ENTRZG.ENTREZ_GENE_ID 
+        FROM GENE G, GENE_ENTREZ_GENE GENTRZG, ENTREZ_GENE ENTRZG 
+        WHERE G.ID=GENTRZG.GENE_ID and GENTRZG.ENTREZ_GENE_ID=ENTRZG.ENTREZ_GENE_ID 
+            and G.ID= :gene_id
+    """
+
+
+    gene_region_sql = """
+        SELECT DISTINCT(R.NAME) 
+        FROM GENE G, GENOMIC_CONTEXT GC, LOCATION L, REGION R 
+        WHERE G.ID=GC.GENE_ID and GC.LOCATION_ID=L.ID and L.REGION_ID=R.ID 
+            and G.ID= :gene_id
+    """
+
+    # TODO: Consider using gene_sql query to get associationCount
+    gene_association_cnt_sql = """
+        SELECT COUNT(A.ID) 
+        FROM GENE G, GENOMIC_CONTEXT GC, SINGLE_NUCLEOTIDE_POLYMORPHISM SNP, 
+            RISK_ALLELE_SNP RAS, RISK_ALLELE RA, LOCUS_RISK_ALLELE LRA, LOCUS L, 
+            ASSOCIATION_LOCUS AL, ASSOCIATION A 
+        WHERE G.ID=GC.GENE_ID and GC.SNP_ID=SNP.ID and SNP.ID=RAS.SNP_ID 
+            and RAS.RISK_ALLELE_ID=RA.ID and RA.ID=LRA.RISK_ALLELE_ID 
+            and LRA.LOCUS_ID=L.ID and L.ID=AL.LOCUS_ID and AL.ASSOCIATION_ID=A.ID 
+            and G.GENE_NAME= :gene_id
+    """
+
+
+    all_gene_data = []
+
+    gene_attr_list = ['geneName', 'id', 'resourcename', 'ensemblGeneId', \
+        'entrezGeneId']
+
+
+    try:
+        ip, port, sid, username, password = gwas_data_sources.get_db_properties(DATABASE_NAME)
+        dsn_tns = cx_Oracle.makedsn(ip, port, sid)
+        connection = cx_Oracle.connect(username, password, dsn_tns)
+
+
+        with contextlib.closing(connection.cursor()) as cursor:
+
+            cursor.execute(gene_sql)
+
+            gene_data = cursor.fetchall()
+
+            for gene in tqdm(gene_data, desc='Get Gene data'):
+                gene = list(gene)
+                gene_document = {}
+
+                # Add data from gene to dictionary
+                gene_document[gene_attr_list[0]] = gene[0]
+                gene_document[gene_attr_list[1]] = gene[2]+":"+str(gene[1])
+                gene_document[gene_attr_list[2]] = gene[2]
+
+
+                ############################
+                # Get Ensembl information
+                ############################
+                cursor.prepare(ensembl_gene_sql)
+                r = cursor.execute(None, {'gene_id': gene[1]})
+                all_ensembl_gene_ids = cursor.fetchall()
+
+                if not all_ensembl_gene_ids:
+                    # add placeholder values
+                    # gene.append(None)
+                     gene_document[gene_attr_list[0]] = None
+                else:
+                    all_ens_ids = []
+                    for ensembl_gene_id in all_ensembl_gene_ids:
+                        # gene.append(ensembl_gene_id[0])
+                        all_ens_ids.append(ensembl_gene_id[0])
+                    gene_document[gene_attr_list[3]] = all_ens_ids
+
+
+                ###########################
+                # Get Entrez information
+                ###########################
+                cursor.prepare(entrez_gene_sql)
+                r = cursor.execute(None, {'gene_id': gene[1]})
+                all_entrez_gene_ids = cursor.fetchall()
+                
+                if not all_entrez_gene_ids:
+                    # add placeholder values
+                    # gene.append(None)
+                    gene_document[gene_attr_list[4]] = None
+                else:
+                    all_ent_ids = []
+                    for entrez_gene_id in all_entrez_gene_ids:
+                        # gene.append(entrez_gene_id[0])
+                        all_ent_ids.append(entrez_gene_id[0])
+                    gene_document[gene_attr_list[4]] = all_ent_ids
+
+
+                # print "\n"
+
+                # add snp location to variant_data data, 
+                # chromosome, position, region
+                # if not all_snp_locations:
+                #     # add placeholder values
+                #     # NOTE: Current Solr data does not include field when value is null
+                #     for item in range(3):
+                #         variant.append(None)
+                # else:
+                #     variant.append(all_snp_locations[0][0])
+                #     variant.append(all_snp_locations[0][1])
+                #     variant.append(all_snp_locations[0][2])
+
+
+                # Add gene document dictionary to list of all gene docs
+                all_gene_data.append(gene_document)
+
+
+        # print "** All Gene: ", all_gene_data
+
+        connection.close()
+
+        return all_gene_data
+
+    except cx_Oracle.DatabaseError, exception:
+        print exception
+
+
+
 
 
 
@@ -661,7 +851,8 @@ if __name__ == '__main__':
     parser.add_argument('--database', default='SPOTREL', choices=['DEV3', 'SPOTREL'], 
                         help='Run as (default: SPOTREL).')
     parser.add_argument('--data_type', default='publication', \
-                        choices=['publication', 'study', 'trait', 'variant', 'all'],
+                        choices=['publication', 'study', 'trait', 'variant', \
+                        'gene', 'all'],
                         help='Run as (default: publication).')
     args = parser.parse_args()
 
@@ -699,6 +890,14 @@ if __name__ == '__main__':
         variant_data_type  = 'variant'
         variant_data = get_variant_data()
         format_data(variant_data, variant_data_type)
+
+
+    # Create Gene documents
+    if args.data_type in ['gene', 'all']:
+        gene_data_type  = 'gene'
+        gene_data = get_gene_data()
+        # NOTE: gene_data is now a dict
+        format_data(gene_data, gene_data_type)
 
 
     
