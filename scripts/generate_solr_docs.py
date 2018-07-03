@@ -166,7 +166,7 @@ def format_data(data, data_type):
         'resourcename', 'traitName_s', 'traitName', 'associationCount', \
         'shortForm', 'synonyms', 'parent']
 
-    association_attr_list = ['id', 'rsId', 'snpType', 'resourcename', \
+    variant_attr_list = ['id', 'rsId', 'snpType', 'resourcename', \
         'chromosomeName', 'chromosomePosition', 'region']
 
 
@@ -229,8 +229,8 @@ def format_data(data, data_type):
 
 
         # Create association documents
-        if data_type in ['association', 'all']:
-            data_dict = dict(zip(association_attr_list, data_row))
+        if data_type in ['variant', 'all']:
+            data_dict = dict(zip(variant_attr_list, data_row))
 
             data_dict['id'] = data_row[3]+":"+str(data_row[0])
 
@@ -240,7 +240,7 @@ def format_data(data, data_type):
             jsonData = json.dumps(data_solr_doc)
 
             my_path = os.path.abspath(os.path.dirname(__file__))
-            path = os.path.join(my_path, "data/association_data.json")
+            path = os.path.join(my_path, "data/variant_data.json")
 
             with open(path, 'w') as outfile:
                 outfile.write(jsonData)
@@ -562,14 +562,14 @@ def get_disease_trait():
 
 
 
-def get_association_data():
+def get_variant_data():
     '''
-    Get Association data for Solr document.
+    Get Variant data for Solr document.
     '''
 
     # List of queries
     snp_sql = """
-        SELECT SNP.ID, SNP.RS_ID, SNP.FUNCTIONAL_CLASS, 'association' as resourcename
+        SELECT SNP.ID, SNP.RS_ID, SNP.FUNCTIONAL_CLASS, 'variant' as resourcename
         FROM SINGLE_NUCLEOTIDE_POLYMORPHISM SNP
     """
 
@@ -583,7 +583,7 @@ def get_association_data():
     # TODO: Abstract out Database connection information
     # DBConnection.DBConnection(DATABASE_NAME)
 
-    all_association_data = []
+    all_variant_data = []
 
     try:
         ip, port, sid, username, password = gwas_data_sources.get_db_properties(DATABASE_NAME)
@@ -595,41 +595,41 @@ def get_association_data():
 
             cursor.execute(snp_sql)
 
-            association_data = cursor.fetchall()
+            variant_data = cursor.fetchall()
 
-            for association in tqdm(association_data, desc='Get Association data'):
-                association = list(association)
-                # print "** SNP: ", association
+            for variant in tqdm(variant_data, desc='Get Variant data'):
+                variant = list(variant)
+                # print "** SNP: ", variant
 
                 ############################
                 # Get Location information
                 ############################
                 cursor.prepare(snp_location_sql)
-                r = cursor.execute(None, {'snp_id': association[0]})
+                r = cursor.execute(None, {'snp_id': variant[0]})
                 all_snp_locations = cursor.fetchall()
                 # print "** Assoc Location: ", all_snp_locations
 
-                # add snp location to association data, 
+                # add snp location to variant_data data, 
                 # chromosome, position, region
                 if not all_snp_locations:
                     # add placeholder values
                     # NOTE: Current Solr data does not include field when value is null
                     for item in range(3):
-                        association.append(None)
+                        variant.append(None)
                 else:
-                    association.append(all_snp_locations[0][0])
-                    association.append(all_snp_locations[0][1])
-                    association.append(all_snp_locations[0][2])
+                    variant.append(all_snp_locations[0][0])
+                    variant.append(all_snp_locations[0][1])
+                    variant.append(all_snp_locations[0][2])
 
 
-                all_association_data.append(association)
+                all_variant_data.append(variant)
 
 
-        # print "** All Association: ", all_association_data
+        # print "** All Variant: ", all_variant_data
 
         connection.close()
 
-        return all_association_data
+        return all_variant_data
 
     except cx_Oracle.DatabaseError, exception:
         print exception
@@ -661,7 +661,7 @@ if __name__ == '__main__':
     parser.add_argument('--database', default='SPOTREL', choices=['DEV3', 'SPOTREL'], 
                         help='Run as (default: SPOTREL).')
     parser.add_argument('--data_type', default='publication', \
-                        choices=['publication', 'study', 'trait', 'association', 'all'],
+                        choices=['publication', 'study', 'trait', 'variant', 'all'],
                         help='Run as (default: publication).')
     args = parser.parse_args()
 
@@ -694,11 +694,11 @@ if __name__ == '__main__':
         format_data(trait_data, trait_data_type)
 
 
-    # Create Association documents
-    if args.data_type in ['association', 'all']:
-        association_data_type  = 'association'
-        association_data = get_association_data()
-        format_data(association_data, association_data_type)
+    # Create Variant documents
+    if args.data_type in ['variant', 'all']:
+        variant_data_type  = 'variant'
+        variant_data = get_variant_data()
+        format_data(variant_data, variant_data_type)
 
 
     
