@@ -18,8 +18,6 @@ import gwas_data_sources
 import OLSData
 import DBConnection
 
-import cProfile
-
 
 def get_publicaton_data():
     '''
@@ -693,19 +691,35 @@ def get_gene_data():
         WHERE G.ID=GC.GENE_ID
     """
 
+    # ensembl_gene_sql = """
+    #     SELECT EG.ENSEMBL_GENE_ID 
+    #     FROM GENE G, GENE_ENSEMBL_GENE GEG, ENSEMBL_GENE EG 
+    #     WHERE G.ID=GEG.GENE_ID and GEG.ENSEMBL_GENE_ID=EG.ID 
+    #         and G.ID= :gene_id
+    # """
+
+    # Get csv list of Ensembl Ids for each Gene name
     ensembl_gene_sql = """
-        SELECT EG.ENSEMBL_GENE_ID 
-        FROM GENE G, GENE_ENSEMBL_GENE GEG, ENSEMBL_GENE EG 
-        WHERE G.ID=GEG.GENE_ID and GEG.ENSEMBL_GENE_ID=EG.ID 
-            and G.ID= :gene_id
+        SELECT listagg(EG.ENSEMBL_GENE_ID, ', ') WITHIN GROUP (ORDER BY EG.ENSEMBL_GENE_ID)
+        FROM GENE G, GENE_ENSEMBL_GENE GEG, ENSEMBL_GENE EG
+        WHERE G.ID=GEG.GENE_ID and GEG.ENSEMBL_GENE_ID=EG.ID
+        and G.ID= :gene_id
     """
 
 
+    # entrez_gene_sql = """
+    #     SELECT ENTRZG.ENTREZ_GENE_ID 
+    #     FROM GENE G, GENE_ENTREZ_GENE GENTRZG, ENTREZ_GENE ENTRZG 
+    #     WHERE G.ID=GENTRZG.GENE_ID and GENTRZG.ENTREZ_GENE_ID=ENTRZG.ENTREZ_GENE_ID 
+    #         and G.ID= :gene_id
+    # """
+
+    # Get csv list of Entrez Ids for each Gene name
     entrez_gene_sql = """
-        SELECT ENTRZG.ENTREZ_GENE_ID 
-        FROM GENE G, GENE_ENTREZ_GENE GENTRZG, ENTREZ_GENE ENTRZG 
-        WHERE G.ID=GENTRZG.GENE_ID and GENTRZG.ENTREZ_GENE_ID=ENTRZG.ENTREZ_GENE_ID 
-            and G.ID= :gene_id
+        SELECT listagg(EG.ENTREZ_GENE_ID, ', ') WITHIN GROUP(ORDER BY EG.ENTREZ_GENE_ID)
+        FROM GENE G, GENE_ENTREZ_GENE GEG, ENTREZ_GENE EG
+        WHERE G.ID=GEG.GENE_ID and GEG.ENTREZ_GENE_ID=EG.ID
+        and G.ID= :gene_id
     """
 
 
@@ -764,16 +778,24 @@ def get_gene_data():
                 r = cursor.execute(None, {'gene_id': gene[1]})
                 all_ensembl_gene_ids = cursor.fetchall()
 
+                # Format Ensembl Ids returned as list
                 if not all_ensembl_gene_ids:
-                    # add placeholder values
-                    # gene.append(None)
-                     gene_document[gene_attr_list[0]] = None
+                    gene_document[gene_attr_list[0]] = None
                 else:
-                    all_ens_ids = []
-                    for ensembl_gene_id in all_ensembl_gene_ids:
-                        # gene.append(ensembl_gene_id[0])
-                        all_ens_ids.append(ensembl_gene_id[0])
-                    gene_document[gene_attr_list[3]] = all_ens_ids
+                    gene_document[gene_attr_list[3]] = all_ensembl_gene_ids[0][0]
+
+
+                # Format Ensembl Ids returned as 1-to-many
+                # if not all_ensembl_gene_ids:
+                #     # add placeholder values
+                #     # gene.append(None)
+                #      gene_document[gene_attr_list[0]] = None
+                # else:
+                #     all_ens_ids = []
+                #     for ensembl_gene_id in all_ensembl_gene_ids:
+                #         # gene.append(ensembl_gene_id[0])
+                #         all_ens_ids.append(ensembl_gene_id[0])
+                #     gene_document[gene_attr_list[3]] = all_ens_ids
 
 
                 ###########################
@@ -784,18 +806,23 @@ def get_gene_data():
                 all_entrez_gene_ids = cursor.fetchall()
                 
                 if not all_entrez_gene_ids:
-                    # add placeholder values
-                    # gene.append(None)
-                    gene_document[gene_attr_list[4]] = None
+                    gene_document[gene_attr_list[0]] = None
                 else:
-                    all_ent_ids = []
-                    for entrez_gene_id in all_entrez_gene_ids:
-                        # gene.append(entrez_gene_id[0])
-                        all_ent_ids.append(entrez_gene_id[0])
-                    gene_document[gene_attr_list[4]] = all_ent_ids
+                    gene_document[gene_attr_list[4]] = all_entrez_gene_ids[0][0]
+
+                # Format Entrez Ids returned as 1-to-many
+                # if not all_entrez_gene_ids:
+                #     # add placeholder values
+                #     # gene.append(None)
+                #     gene_document[gene_attr_list[4]] = None
+                # else:
+                #     all_ent_ids = []
+                #     for entrez_gene_id in all_entrez_gene_ids:
+                #         # gene.append(entrez_gene_id[0])
+                #         all_ent_ids.append(entrez_gene_id[0])
+                #     gene_document[gene_attr_list[4]] = all_ent_ids
 
 
-                # print "\n"
 
                 # add snp location to variant_data data, 
                 # chromosome, position, region
