@@ -166,9 +166,17 @@ def format_data(data, data_type):
         'resourcename', 'traitName_s', 'traitName', 'associationCount', \
         'shortForm', 'synonyms', 'parent']
 
-    variant_attr_list = ['id', 'rsId', 'snpType', 'resourcename', \
-        'chromosomeName', 'chromosomePosition', 'region']
 
+
+    # Create Variant documents
+    if data_type in ['variant', 'all']:
+        jsonData = json.dumps(data)
+
+        my_path = os.path.abspath(os.path.dirname(__file__))
+        path = os.path.join(my_path, "data/variant_data.json")
+
+        with open(path, 'w') as outfile:
+            outfile.write(jsonData)
 
 
     # Create Gene documents
@@ -623,6 +631,9 @@ def get_variant_data():
 
     all_variant_data = []
 
+    variant_attr_list = ['id', 'rsId', 'snpType', 'resourcename', \
+        'chromosomeName', 'chromosomePosition', 'region']
+
     try:
         ip, port, sid, username, password = gwas_data_sources.get_db_properties(DATABASE_NAME)
         dsn_tns = cx_Oracle.makedsn(ip, port, sid)
@@ -637,7 +648,14 @@ def get_variant_data():
 
             for variant in tqdm(variant_data, desc='Get Variant data'):
                 variant = list(variant)
-                # print "** SNP: ", variant
+
+                variant_document = {}
+
+                # Add data from gene to dictionary
+                variant_document[variant_attr_list[0]] = variant[3]+":"+str(variant[0])
+                variant_document[variant_attr_list[1]] = variant[1]
+                variant_document[variant_attr_list[2]] = variant[2]
+                variant_document[variant_attr_list[3]] = variant[3]
 
                 ############################
                 # Get Location information
@@ -652,15 +670,16 @@ def get_variant_data():
                 if not all_snp_locations:
                     # add placeholder values
                     # NOTE: Current Solr data does not include field when value is null
-                    for item in range(3):
-                        variant.append(None)
+                    variant_document[variant_attr_list[4]] = None
+                    variant_document[variant_attr_list[5]] = None
+                    variant_document[variant_attr_list[6]] = None
                 else:
-                    variant.append(all_snp_locations[0][0])
-                    variant.append(all_snp_locations[0][1])
-                    variant.append(all_snp_locations[0][2])
+                    variant_document[variant_attr_list[4]] = all_snp_locations[0][0]
+                    variant_document[variant_attr_list[4]] = all_snp_locations[0][1]
+                    variant_document[variant_attr_list[4]] = all_snp_locations[0][2]
 
 
-                all_variant_data.append(variant)
+                all_variant_data.append(variant_document)
 
 
         # print "** All Variant: ", all_variant_data
