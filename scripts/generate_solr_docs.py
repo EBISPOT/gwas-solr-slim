@@ -59,6 +59,11 @@ def get_publicaton_data():
 
     all_publication_data = []
 
+    publication_attr_list = ['id', 'pmid', 'journal', 'title', \
+        'publicationDate', 'resourcename', 'author', 'author_s', \
+        'authorAscii', 'authorAscii_s', 'authorsList', \
+        'associationCount', 'studyCount']
+
     try:
         ip, port, sid, username, password = gwas_data_sources.get_db_properties(DATABASE_NAME)
         dsn_tns = cx_Oracle.makedsn(ip, port, sid)
@@ -74,6 +79,17 @@ def get_publicaton_data():
             for publication in tqdm(publication_data, desc='Get Publication data'):
                 publication = list(publication)
 
+                publication_document = {}
+
+                # Add data from gene to dictionary
+                publication_document[publication_attr_list[0]] = publication[5]+":"+str(publication[0])
+                publication_document[publication_attr_list[1]] = publication[1]
+                publication_document[publication_attr_list[2]] = publication[2]
+                publication_document[publication_attr_list[3]] = publication[3]
+                publication_document[publication_attr_list[4]] = publication[4]
+                publication_document[publication_attr_list[5]] = publication[5]
+
+
                 ############################
                 # Get Author data
                 ############################
@@ -81,18 +97,22 @@ def get_publicaton_data():
                 r = cursor.execute(None, {'pubmed_id': publication[1]})
                 author_data = cursor.fetchall()
 
-                # create author field data
-                first_author = [author_data[0][0]]
-                publication.append(first_author)
+                # Create first author
+                # first_author = [author_data[0][0]]
+                publication_document[publication_attr_list[6]] = [author_data[0][0]]
 
-                author_s = author_data[0][0]
-                publication.append(author_s)
+                # Create first author as string
+                # author_s = author_data[0][0]
+                publication_document[publication_attr_list[7]] = author_data[0][0]
 
-                author_ascii = [author_data[0][1]]
-                publication.append(author_ascii)
+                # Create ascii author list
+                # author_ascii = [author_data[0][1]]
+                publication_document[publication_attr_list[8]] =  [author_data[0][1]]
 
-                author_ascii_s = author_data[0][1]
-                publication.append(author_ascii_s)
+                # Create ascii author string 
+                # author_ascii_s = author_data[0][1]
+                # publication.append(author_ascii_s)
+                publication_document[publication_attr_list[9]] = author_data[0][1]
 
                 if author_data[0][3] is None:
                     author_orcid = 'NA'
@@ -107,7 +127,7 @@ def get_publicaton_data():
                     authorList.append(author_formatted)
                 
                 # add authorList to publication data
-                publication.append(authorList)
+                publication_document[publication_attr_list[10]] = authorList
 
 
                 ##########################
@@ -117,7 +137,7 @@ def get_publicaton_data():
                 r = cursor.execute(None, {'pubmed_id': publication[1]})
                 association_cnt = cursor.fetchone()
 
-                publication.append(association_cnt)
+                publication_document[publication_attr_list[11]] = association_cnt[0]
 
 
                 #########################################
@@ -127,14 +147,15 @@ def get_publicaton_data():
                 r = cursor.execute(None, {'pubmed_id': publication[1]})
                 study_cnt = cursor.fetchone()
 
-                publication.append(study_cnt)
+                publication_document[publication_attr_list[12]] = study_cnt[0]
 
 
                 ######################################
                 # Add publication data document to
                 # list of all publication data docs
                 ######################################
-                all_publication_data.append(publication)
+                # all_publication_data.append(publication)
+                all_publication_data.append(publication_document)
         
 
         connection.close()
@@ -152,10 +173,10 @@ def format_data(data, data_type):
     data_dict = {}
     data_solr_doc = []
 
-    publication_attr_list = ['id', 'pmid', 'journal', 'title', \
-        'publicationDate', 'resourcename', 'author', 'author_s', \
-        'authorAscii', 'authorAscii_s', 'authorsList', \
-        'associationCount', 'studyCount']
+    # publication_attr_list = ['id', 'pmid', 'journal', 'title', \
+    #     'publicationDate', 'resourcename', 'author', 'author_s', \
+    #     'authorAscii', 'authorAscii_s', 'authorsList', \
+    #     'associationCount', 'studyCount']
 
 
     study_attr_list = ['id', 'accessionId', 'title', 'resourcename', \
@@ -166,6 +187,16 @@ def format_data(data, data_type):
         'resourcename', 'traitName_s', 'traitName', 'associationCount', \
         'shortForm', 'synonyms', 'parent']
 
+
+    # Create Publication documents
+    if data_type in ['publication', 'all']:
+        jsonData = json.dumps(data)
+
+        my_path = os.path.abspath(os.path.dirname(__file__))
+        path = os.path.join(my_path, "data/publication_data.json")
+
+        with open(path, 'w') as outfile:
+            outfile.write(jsonData)
 
 
     # Create Variant documents
