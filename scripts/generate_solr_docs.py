@@ -222,13 +222,6 @@ def format_data(data, data_type):
 
     # Create Gene documents
     if data_type in ['gene', 'all']:
-        # data_dict = dict(zip(gene_attr_list, data_row))
-
-        # data_dict['id'] = data_row[2]+":"+str(data_row[1])
-
-        # data_solr_doc.append(data_dict)
-        # data_dict = {}
-
         jsonData = json.dumps(data)
 
         my_path = os.path.abspath(os.path.dirname(__file__))
@@ -236,103 +229,6 @@ def format_data(data, data_type):
 
         with open(path, 'w') as outfile:
             outfile.write(jsonData)
-
-
-
-    # for data_row in tqdm(data, desc='Format data'):
-    #     data_row = list(data_row)
-
-    #     # Create Publication documents
-    #     if data_type in ['publication', 'all']:
-
-    #         data_dict = dict(zip(publication_attr_list, data_row))
-
-    #         data_dict['id'] = data_row[5]+":"+str(data_row[0])
-
-    #         data_solr_doc.append(data_dict)
-    #         data_dict = {}
-
-    #         jsonData = json.dumps(data_solr_doc)
-
-    #         my_path = os.path.abspath(os.path.dirname(__file__))
-    #         path = os.path.join(my_path, "data/publication_data.json")
-
-    #         with open(path, 'w') as outfile:
-    #             outfile.write(jsonData)
-
-
-    #     # Create Study documents
-    #     if data_type in ['study', 'all']:
-    #         data_dict = dict(zip(study_attr_list, data_row))
-
-    #         data_dict['id'] = data_row[3]+":"+str(data_row[0])
-
-    #         data_solr_doc.append(data_dict)
-    #         data_dict = {}
-
-    #         jsonData = json.dumps(data_solr_doc)
-
-    #         my_path = os.path.abspath(os.path.dirname(__file__))
-    #         path = os.path.join(my_path, "data/study_data.json")
-
-    #         with open(path, 'w') as outfile:
-    #             outfile.write(jsonData)
-
-
-    #     # Create Trait documents
-    #     if data_type in ['trait', 'all']:
-    #         data_dict = dict(zip(trait_attr_list, data_row))
-
-    #         data_dict['id'] = data_row[4]+":"+str(data_row[0])
-
-    #         data_solr_doc.append(data_dict)
-    #         data_dict = {}
-
-    #         jsonData = json.dumps(data_solr_doc)
-
-    #         my_path = os.path.abspath(os.path.dirname(__file__))
-    #         path = os.path.join(my_path, "data/trait_data.json")
-
-    #         with open(path, 'w') as outfile:
-    #             outfile.write(jsonData)
-
-
-    #     # Create variant documents
-    #     if data_type in ['variant', 'all']:
-    #         data_dict = dict(zip(variant_attr_list, data_row))
-
-    #         data_dict['id'] = data_row[3]+":"+str(data_row[0])
-
-    #         data_solr_doc.append(data_dict)
-    #         data_dict = {}
-
-    #         jsonData = json.dumps(data_solr_doc)
-
-    #         my_path = os.path.abspath(os.path.dirname(__file__))
-    #         path = os.path.join(my_path, "data/variant_data.json")
-
-    #         with open(path, 'w') as outfile:
-    #             outfile.write(jsonData)
-
-
-        # # Create gene documents
-        # if data_type in ['gene', 'all']:
-        #     data_dict = dict(zip(gene_attr_list, data_row))
-
-        #     data_dict['id'] = data_row[2]+":"+str(data_row[1])
-
-        #     data_solr_doc.append(data_dict)
-        #     data_dict = {}
-
-        #     jsonData = json.dumps(data_solr_doc)
-
-        #     my_path = os.path.abspath(os.path.dirname(__file__))
-        #     path = os.path.join(my_path, "data/gene_data.json")
-
-        #     with open(path, 'w') as outfile:
-        #         outfile.write(jsonData)
-
-
 
 
 def get_study_data():
@@ -490,20 +386,6 @@ def get_study_data():
 
     except cx_Oracle.DatabaseError, exception:
         print exception
-
-
-
-def get_efo_data():
-    '''
-    '''
-
-    # Get a list of all EFOs
-    # For each EFO, find out how many studies and associations are mapped to the trait OR should the 
-    # number of studies and associations per EFO be determined as part of the Study doc gneration?
-    # Additional fields, like the EFO definition, synonyms, parent terms can be pulled from OLS
-    ols_data = OLSData.OLSData("heart")
-    ols_data.get_ols_results()
-
 
 
 def get_trait_data():
@@ -888,18 +770,6 @@ def get_gene_data():
 
 
 
-
-def test_format():
-    with open('publication_data.json') as f:
-        data = json.load(f)
-
-    # pprint(data)
-    print "** First JSON doc: ", data[1]
-    for doc in data:
-        print "** Item-5: ", doc['1'], doc['5']
-
-
-
 if __name__ == '__main__':
     '''
     Create Solr documents for categories of interest.
@@ -959,10 +829,4 @@ if __name__ == '__main__':
         gene_data = get_gene_data()
         # NOTE: gene_data is now a dict
         format_data(gene_data, gene_data_type)
-
-
-    
-
-    # test_format()
-
 
