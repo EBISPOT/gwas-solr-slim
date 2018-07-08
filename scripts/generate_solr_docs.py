@@ -19,7 +19,6 @@ import OLSData
 import DBConnection
 
 
-
 def get_publicaton_data():
     '''
     Get Publication data for Solr document.
@@ -175,11 +174,6 @@ def format_data(data, data_type):
     data_solr_doc = []
 
 
-    trait_attr_list = ['id', 'mappedLabel', 'mappedUri', 'studyCount', \
-        'resourcename', 'traitName_s', 'traitName', 'associationCount', \
-        'shortForm', 'synonyms', 'parent']
-
-
     # Create Publication documents
     if data_type in ['publication', 'all']:
         jsonData = json.dumps(data)
@@ -197,6 +191,17 @@ def format_data(data, data_type):
 
         my_path = os.path.abspath(os.path.dirname(__file__))
         path = os.path.join(my_path, "data/study_data.json")
+
+        with open(path, 'w') as outfile:
+            outfile.write(jsonData)
+
+
+    # Create Trait documents
+    if data_type in ['trait', 'all']:
+        jsonData = json.dumps(data)
+
+        my_path = os.path.abspath(os.path.dirname(__file__))
+        path = os.path.join(my_path, "data/trait_data.json")
 
         with open(path, 'w') as outfile:
             outfile.write(jsonData)
@@ -499,7 +504,7 @@ def get_efo_data():
 
 
 
-def get_disease_trait():
+def get_trait_data():
     '''
     Given each EFO trait, get all Reported trait information.
     '''
@@ -533,6 +538,10 @@ def get_disease_trait():
 
     all_trait_data = []
 
+    trait_attr_list = ['id', 'mappedLabel', 'mappedUri', 'studyCount', \
+        'resourcename', 'traitName_s', 'traitName', 'associationCount', \
+        'shortForm', 'synonyms', 'parent']
+
     try:
         ip, port, sid, username, password = gwas_data_sources.get_db_properties(DATABASE_NAME)
         dsn_tns = cx_Oracle.makedsn(ip, port, sid)
@@ -546,8 +555,15 @@ def get_disease_trait():
             mapped_trait_data = cursor.fetchall()
 
             for mapped_trait in tqdm(mapped_trait_data, desc='Get EFO/Mapped trait data'):
-                mapped_trait = list(mapped_trait)
-                # print "** Mapped EFO trait: ", mapped_trait
+                # Data object for each mapped trait
+                mapped_trait_document = {}
+
+                mapped_trait_document['id'] = mapped_trait[4]+":"+str(mapped_trait[0])
+                mapped_trait_document['mappedLabel'] = mapped_trait[1]
+                mapped_trait_document['mappedUri'] = mapped_trait[2]
+                mapped_trait_document['studyCount'] = mapped_trait[3]
+                mapped_trait_document['resourcename'] = mapped_trait[4]
+
 
                 #########################
                 # Get reported trait(s)
@@ -555,13 +571,13 @@ def get_disease_trait():
                 cursor.prepare(reported_trait_sql)
                 r = cursor.execute(None, {'trait_id': mapped_trait[0]})
                 all_reported_traits = cursor.fetchall()
-                # print "** Reported trait(s): ", all_reported_traits, "\n", [all_reported_traits[0][1]]
+
 
                 # add reported trait as string
-                mapped_trait.append(all_reported_traits[0][1])
+                mapped_trait_document['traitName_s'] = all_reported_traits[0][1]
 
                 # add reported trait as list
-                mapped_trait.append([all_reported_traits[0][1]])
+                mapped_trait_document['traitName'] = [all_reported_traits[0][1]]
 
                 
                 #######################################
@@ -570,13 +586,12 @@ def get_disease_trait():
                 cursor.prepare(trait_association_cnt_sql)
                 r = cursor.execute(None, {'trait_id': mapped_trait[0]})
                 trait_assoc_cnt = cursor.fetchone()
-                # print "** Assoc CNT: ", trait_assoc_cnt
 
                 if not trait_assoc_cnt:
                     trait_assoc_cnt = 0
-                    mapped_trait.append(trait_assoc_cnt)
+                    mapped_trait_document['associationCount'] = trait_assoc_cnt
                 else:
-                    mapped_trait.append(trait_assoc_cnt[0])
+                    mapped_trait_document['associationCount'] = trait_assoc_cnt[0]
 
 
                 #####################################
@@ -588,41 +603,39 @@ def get_disease_trait():
 
                 if not ols_term_data['iri'] == None:
                     mapped_uri = [ols_term_data['iri'].encode('utf-8')]
-                    # mapped_trait.append(mapped_uri) - this also comes from the db
 
-                    # use this or from db, note is entered manually into db?
+                    # use this or from db? note is entered manually into db
                     short_form = [ols_term_data['short_form'].encode('utf-8')]
-                    mapped_trait.append(short_form)
+                    mapped_trait_document['shortForm'] = short_form
 
-                    # use this or from db?
+                    # use this or from db? note is entered manually into db
                     label = [ols_term_data['label'].encode('utf-8')]
-                    # mapped_trait.append(label)
 
-
+                    # Add synonyms
                     if not ols_term_data['synonyms'] == None:
                         synonyms = [synonym.encode('utf-8') for synonym in ols_term_data['synonyms']]
-                        mapped_trait.append(synonyms)
+                        mapped_trait_document['synonyms'] = synonyms
                     else: 
                         synonyms = []
-                        mapped_trait.append(synonyms)
+                        mapped_trait_document['synonyms'] = synonyms
 
-
+                    # Add ancestors
                     if not ols_term_data['ancestors'] == None:
                         ancestor_data = OLSData.OLSData(ols_term_data['ancestors'])
                         ancestor_terms = [ancestor.encode('utf-8') for ancestor in ancestor_data.get_ancestors()]
-                        mapped_trait.append(ancestor_terms)
+                        mapped_trait_document['parent'] = ancestor_terms
 
                 else:
-                    # add placeholder data
-                    for item in range(4):
-                        mapped_trait.append(None)
-
+                    # # add placeholder data
+                    # for item in range(4):
+                    #     mapped_trait.append(None)
+                    pass
 
 
                 ############################################
                 # Add trait data to list of all trait data
                 ############################################
-                all_trait_data.append(mapped_trait)
+                all_trait_data.append(mapped_trait_document)
 
 
         connection.close()
@@ -950,10 +963,10 @@ if __name__ == '__main__':
     # efo_data = get_efo_data()
 
 
-    # Create Disease Trait documents
+    # Create Trait documents
     if args.data_type in ['trait', 'all']:
         trait_data_type  = 'trait'
-        trait_data = get_disease_trait()
+        trait_data = get_trait_data()
         format_data(trait_data, trait_data_type)
 
 
