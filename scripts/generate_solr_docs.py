@@ -19,6 +19,7 @@ import OLSData
 import DBConnection
 
 
+
 def get_publicaton_data():
     '''
     Get Publication data for Solr document.
@@ -173,15 +174,6 @@ def format_data(data, data_type):
     data_dict = {}
     data_solr_doc = []
 
-    # publication_attr_list = ['id', 'pmid', 'journal', 'title', \
-    #     'publicationDate', 'resourcename', 'author', 'author_s', \
-    #     'authorAscii', 'authorAscii_s', 'authorsList', \
-    #     'associationCount', 'studyCount']
-
-
-    study_attr_list = ['id', 'accessionId', 'title', 'resourcename', \
-        'platform', 'ancestralGroups', 'traitName_s', 'traitName', \
-        'associationCount']
 
     trait_attr_list = ['id', 'mappedLabel', 'mappedUri', 'studyCount', \
         'resourcename', 'traitName_s', 'traitName', 'associationCount', \
@@ -194,6 +186,17 @@ def format_data(data, data_type):
 
         my_path = os.path.abspath(os.path.dirname(__file__))
         path = os.path.join(my_path, "data/publication_data.json")
+
+        with open(path, 'w') as outfile:
+            outfile.write(jsonData)
+
+
+    # Create Study documents
+    if data_type in ['study', 'all']:
+        jsonData = json.dumps(data)
+
+        my_path = os.path.abspath(os.path.dirname(__file__))
+        path = os.path.join(my_path, "data/study_data.json")
 
         with open(path, 'w') as outfile:
             outfile.write(jsonData)
@@ -373,28 +376,31 @@ def get_study_data():
         GROUP BY S.ID
         """
 
-
     all_study_data = []
 
+    study_attr_list = ['id', 'accessionId', 'title', 'resourcename', \
+        'platform', 'ancestralGroups', 'traitName_s', 'traitName', \
+        'associationCount']
 
     try:
         ip, port, sid, username, password = gwas_data_sources.get_db_properties(DATABASE_NAME)
-
         dsn_tns = cx_Oracle.makedsn(ip, port, sid)
         connection = cx_Oracle.connect(username, password, dsn_tns)
 
-        # cursor = connection.cursor()
         with contextlib.closing(connection.cursor()) as cursor:
-
             cursor.execute(study_sql)
-
             study_data = cursor.fetchall()
 
-            studies_missing_ancestral_groups = []
-            studies_missing_associations = []
 
             for study in tqdm(study_data, desc='Get Study data'):
-                study = list(study)
+                # Data object for each Study
+                study_document = {}
+
+                # Add items to Study document
+                study_document['id'] = study[3]+":"+str(study[0])
+                study_document['accessionId'] = study[1]
+                study_document['title'] = study[2]
+                study_document['resourcename'] = study[3]
 
 
                 ######################
@@ -412,8 +418,8 @@ def get_study_data():
                     platform = platforms[0][1]
 
                 # add platforms (as string) to study data
-                study.append(platform)
-                
+                study_document['platform'] = platform
+
 
                 #######################
                 # Get Ancestral groups
@@ -426,12 +432,11 @@ def get_study_data():
 
                 if not ancestral_groups:
                     study_ancestral_groups = 'NR'
-                    studies_missing_ancestral_groups.append(study[1])
                 else:
                     study_ancestral_groups = [ancestral_groups[0][1]]
 
                 # add ancestry information to study data
-                study.append(study_ancestral_groups)
+                study_document['ancestralGroups'] = study_ancestral_groups
 
 
                 #######################
@@ -444,10 +449,10 @@ def get_study_data():
                 reported_traits = cursor.fetchall()
 
                 # add trait as string
-                study.append(reported_traits[0][1])
+                study_document['traitName_s'] = reported_traits[0][1]
 
                 # add trait as list
-                study.append([reported_traits[0][1]])
+                study_document['traitName'] = [reported_traits[0][1]]
 
 
                 ###############################
@@ -459,29 +464,19 @@ def get_study_data():
 
                 if not association_cnt:
                     association_cnt = 0
-                    study.append(association_cnt)
+                    study_document['associationCount'] = association_cnt
 
-                    if study[1] not in studies_missing_associations:
-                        studies_missing_associations.append(study[1])
                 else:
-                    study.append(association_cnt[0][1])
-
+                    study_document['associationCount'] = association_cnt[0][1]
 
 
                 #############################################
                 # Add study data to list of all study data
                 #############################################
-                all_study_data.append(study)
+                all_study_data.append(study_document)
 
 
         connection.close()
-
-        # QA Checks of Association and Ancestral Group information
-        # print "** All Studies missing Ancestral groups: ", \
-        #     len(studies_missing_ancestral_groups), studies_missing_ancestral_groups
-
-        # print "** All Studies missing Associations: ", \
-        #     len(studies_missing_associations), studies_missing_associations
 
 
         return all_study_data
