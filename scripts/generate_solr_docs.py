@@ -18,6 +18,8 @@ import gwas_data_sources
 import OLSData
 import DBConnection
 
+import Variant
+
 
 def get_publicaton_data():
     '''
@@ -652,83 +654,57 @@ def get_variant_data():
     Get Variant data for Solr document.
     '''
 
-    # List of queries
-    snp_sql = """
-        SELECT SNP.ID, SNP.RS_ID, SNP.FUNCTIONAL_CLASS, 'variant' as resourcename
-        FROM SINGLE_NUCLEOTIDE_POLYMORPHISM SNP
-    """
-
-    snp_location_sql = """
-        SELECT L.CHROMOSOME_NAME, L.CHROMOSOME_POSITION, R.NAME
-        FROM LOCATION L, SNP_LOCATION SL, SINGLE_NUCLEOTIDE_POLYMORPHISM SNP, REGION R
-        WHERE L.ID=SL.LOCATION_ID and SL.SNP_ID=SNP.ID and L.REGION_ID=R.ID 
-            and SNP.ID= :snp_id
-    """
-
-    # TODO: Abstract out Database connection information
-    # DBConnection.DBConnection(DATABASE_NAME)
-
     all_variant_data = []
 
     variant_attr_list = ['id', 'rsId', 'snpType', 'resourcename', \
         'chromosomeName', 'chromosomePosition', 'region']
 
-    try:
-        ip, port, sid, username, password = gwas_data_sources.get_db_properties(DATABASE_NAME)
-        dsn_tns = cx_Oracle.makedsn(ip, port, sid)
-        connection = cx_Oracle.connect(username, password, dsn_tns)
+    
+    variant_cls = Variant.Variant(DATABASE_NAME)
+    connection = variant_cls.get_database_connection()
 
 
-        with contextlib.closing(connection.cursor()) as cursor:
+    with contextlib.closing(connection.cursor()) as cursor:
 
-            cursor.execute(snp_sql)
-
-            variant_data = cursor.fetchall()
-
-            for variant in tqdm(variant_data, desc='Get Variant data'):
-                variant = list(variant)
-
-                variant_document = {}
-
-                # Add data from gene to dictionary
-                variant_document[variant_attr_list[0]] = variant[3]+":"+str(variant[0])
-                variant_document[variant_attr_list[1]] = variant[1]
-                variant_document[variant_attr_list[2]] = variant[2]
-                variant_document[variant_attr_list[3]] = variant[3]
-
-                ############################
-                # Get Location information
-                ############################
-                cursor.prepare(snp_location_sql)
-                r = cursor.execute(None, {'snp_id': variant[0]})
-                all_snp_locations = cursor.fetchall()
-                # print "** Assoc Location: ", all_snp_locations
-
-                # add snp location to variant_data data, 
-                # chromosome, position, region
-                if not all_snp_locations:
-                    # add placeholder values
-                    # NOTE: Current Solr data does not include field when value is null
-                    variant_document[variant_attr_list[4]] = None
-                    variant_document[variant_attr_list[5]] = None
-                    variant_document[variant_attr_list[6]] = None
-                else:
-                    variant_document[variant_attr_list[4]] = all_snp_locations[0][0]
-                    variant_document[variant_attr_list[4]] = all_snp_locations[0][1]
-                    variant_document[variant_attr_list[4]] = all_snp_locations[0][2]
+        variant_data = variant_cls.get_snps(cursor)
 
 
-                all_variant_data.append(variant_document)
+        for variant in tqdm(variant_data, desc='Get Variant data'):
+            # Object for Variant data
+            variant_document = {}
+
+            # Add data from variant to dictionary
+            variant_document[variant_attr_list[0]] = variant[3]+":"+str(variant[0])
+            variant_document[variant_attr_list[1]] = variant[1]
+            variant_document[variant_attr_list[2]] = variant[2]
+            variant_document[variant_attr_list[3]] = variant[3]
+
+            ############################
+            # Get Location information
+            ############################
+            all_snp_locations = variant_cls.get_variant_location(cursor, variant[0])
 
 
-        # print "** All Variant: ", all_variant_data
+            # Add snp location to variant_data data, 
+            if not all_snp_locations:
+                # add placeholder values
+                # NOTE: Current Solr data does not include field when value is null
+                variant_document[variant_attr_list[4]] = None
+                variant_document[variant_attr_list[5]] = None
+                variant_document[variant_attr_list[6]] = None
+            else:
+                variant_document[variant_attr_list[4]] = all_snp_locations[0][0]
+                variant_document[variant_attr_list[4]] = all_snp_locations[0][1]
+                variant_document[variant_attr_list[4]] = all_snp_locations[0][2]
 
-        connection.close()
 
-        return all_variant_data
+            all_variant_data.append(variant_document)
 
-    except cx_Oracle.DatabaseError, exception:
-        print exception
+
+    connection.close()
+
+    return all_variant_data
+
 
 
 def get_gene_data():
