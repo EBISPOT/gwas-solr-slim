@@ -555,6 +555,23 @@ def get_trait_data():
                     # use this or from db? note is entered manually into db
                     label = [ols_term_data['label'].encode('utf-8')]
 
+                    # Create title field, use this or from db? note is entered manually into db
+                    mapped_trait_document['title'] = ols_term_data['label']+" ("+ols_term_data['short_form']+")"
+
+                    #######################
+                    # Create description
+                    ######################
+                    # Trait description, number of studies, number of associations.
+                    term_description = ""
+                    if not ols_term_data['description'] == None:
+                        term_description = ''.join(ols_term_data['description'])
+                    else:
+                        term_description = "NA"
+
+                    mapped_trait_document['description'] = term_description+", associations: "+\
+                    str(mapped_trait_document['associationCount'])+", studies: "+str(mapped_trait_document['studyCount'])
+
+
                     # Add synonyms
                     if not ols_term_data['synonyms'] == None:
                         synonyms = [synonym.encode('utf-8') for synonym in ols_term_data['synonyms']]

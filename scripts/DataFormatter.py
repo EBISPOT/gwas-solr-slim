@@ -19,8 +19,9 @@ class DataFormatter:
         iri_key = "iri"
         synonyms_key = "synonyms"
         short_form_key = "short_form"
+        definition_key = "description"
         ancestors = "ancestors"
-
+        
 
         if label_key in keys:
             result_obj[label_key] = term_result[label_key]
@@ -30,6 +31,8 @@ class DataFormatter:
             result_obj[synonyms_key] = term_result[synonyms_key]
         if short_form_key in keys:
             result_obj[short_form_key] = term_result[short_form_key]
+        if definition_key in keys:
+            result_obj[definition_key] = term_result[definition_key]
 
         # Get link for ancestors
         result_obj[ancestors] = term_result['_links']['ancestors']['href']

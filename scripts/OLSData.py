@@ -23,7 +23,7 @@ class OLSData:
         OLS_URL = "http://www.ebi.ac.uk/ols/api/ontologies/{ontology_prefix:s}/terms/"\
             "{term_iri:s}".format(ontology_prefix='efo',term_iri=term_iri_double_encoded)
 
-        no_results = {'iri': None, 'synonyms': None, 'short_form': None, 'label': None}
+        no_results = {'iri': None, 'synonyms': None, 'short_form': None, 'label': None, 'description': None}
 
         try:
             response = requests.get(OLS_URL)
