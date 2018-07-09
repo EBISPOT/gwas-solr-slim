@@ -251,9 +251,13 @@ def get_study_data():
 
     # List of queries
     study_sql = """
-        SELECT S.ID, S.ACCESSION_ID, 'TODO-Title-Generation' as title, 'study' as resourcename
-        FROM STUDY S
+        SELECT S.ID, S.ACCESSION_ID, 'TODO-Title-Generation' as title, 'study' as resourcename,
+        A.FULLNAME, TO_CHAR(P.PUBLICATION_DATE, 'yyyy'), P.PUBLICATION, P.PUBMED_ID, S.INITIAL_SAMPLE_SIZE,
+        S.FULL_PVALUE_SET
+        FROM STUDY S,PUBLICATION P, AUTHOR A
+        WHERE S.PUBLICATION_ID=P.ID and P.FIRST_AUTHOR_ID=A.ID
     """
+
 
     study_platform_types_sql = """
         SELECT DISTINCT S.ID, listagg(P.MANUFACTURER, ', ') WITHIN GROUP (ORDER BY P.MANUFACTURER) AS PLATFORM_TYPES
@@ -262,6 +266,7 @@ def get_study_data():
             and S.ID= :study_id
         GROUP BY S.ID
     """
+
 
     study_ancestral_groups_sql = """
         SELECT  x.ID, listagg(x.ANCESTRAL_GROUP, ', ') WITHIN GROUP (ORDER BY x.ANCESTRAL_GROUP)
@@ -276,7 +281,7 @@ def get_study_data():
 
 
     study_reported_trait_sql = """
-        SELECT DISTINCT S.ID, listagg(DT.TRAIT, ', ') WITHIN GROUP (ORDER BY DT.TRAIT) AS TRAITS
+        SELECT DISTINCT S.ID, listagg(DT.TRAIT, ', ') WITHIN GROUP (ORDER BY DT.TRAIT)
         FROM STUDY S, STUDY_DISEASE_TRAIT SDT, DISEASE_TRAIT DT
         WHERE S.ID=SDT.STUDY_ID and SDT.DISEASE_TRAIT_ID=DT.ID
               and S.ID= :study_id
@@ -284,19 +289,29 @@ def get_study_data():
     """
 
 
+    study_mapped_trait_sql = """
+        SELECT DISTINCT S.ID, listagg(ET.TRAIT, ', ') WITHIN GROUP (ORDER BY ET.TRAIT)
+        FROM STUDY S, STUDY_EFO_TRAIT SETR, EFO_TRAIT ET
+        WHERE S.ID=SETR.STUDY_ID and SETR.EFO_TRAIT_ID=ET.ID
+              and S.ID= :study_id
+        GROUP BY S.ID
+    """
+
+
     study_associations_cnt_sql = """
-        SELECT S.ID, COUNT(ASSOC.ID)
+        SELECT COUNT(ASSOC.ID)
         FROM STUDY S, ASSOCIATION ASSOC
         WHERE S.ID=ASSOC.STUDY_ID
             and S.ID= :study_id
-        GROUP BY S.ID
         """
+
 
     all_study_data = []
 
     study_attr_list = ['id', 'accessionId', 'title', 'resourcename', \
-        'platform', 'ancestralGroups', 'traitName_s', 'traitName', \
-        'associationCount']
+        'platform', 'ancestralGroups', 'reportedTrait_s', 'reportedTrait', \
+        'associationCount', 'description', 'fullPvalueSet']
+
 
     try:
         ip, port, sid, username, password = gwas_data_sources.get_db_properties(DATABASE_NAME)
@@ -317,10 +332,11 @@ def get_study_data():
                 study_document['accessionId'] = study[1]
                 study_document['title'] = study[2]
                 study_document['resourcename'] = study[3]
+                study_document['fullPvalueSet'] = study[9]
 
 
                 ######################
-                # Get platform list
+                # Get Platform list
                 ######################
                 cursor.prepare(study_platform_types_sql)
                 r = cursor.execute(None, {'study_id': study[0]})
@@ -365,10 +381,30 @@ def get_study_data():
                 reported_traits = cursor.fetchall()
 
                 # add trait as string
-                study_document['traitName_s'] = reported_traits[0][1]
+                study_document['reportedTrait_s'] = reported_traits[0][1]
 
                 # add trait as list
-                study_document['traitName'] = [reported_traits[0][1]]
+                study_document['reportedTrait'] = [reported_traits[0][1]]
+
+
+                #######################
+                # Get Mapped Trait
+                #######################
+                study_mapped_traits = []
+
+                cursor.prepare(study_mapped_trait_sql)
+                r = cursor.execute(None, {'study_id': study[0]})
+                mapped_traits = cursor.fetchall()
+
+                # add trait as string
+                study_document['mappedTrait'] = mapped_traits[0][1]
+
+
+                ######################
+                # Create Title field
+                ######################
+                # AccessionID + mapped trait + initial sample
+                study_document['title'] = study[1]+": "+mapped_traits[0][1]+", "+study[8]
 
 
                 ###############################
@@ -376,14 +412,25 @@ def get_study_data():
                 ###############################
                 cursor.prepare(study_associations_cnt_sql)
                 r = cursor.execute(None, {'study_id': study[0]})
-                association_cnt = cursor.fetchall()
+                association_cnt = cursor.fetchone()
 
                 if not association_cnt:
                     association_cnt = 0
                     study_document['associationCount'] = association_cnt
 
                 else:
-                    study_document['associationCount'] = association_cnt[0][1]
+                    study_document['associationCount'] = association_cnt[0]
+
+
+                #############################
+                # Create Description field
+                #############################
+                # The description field is formatted as:
+                # First author, year, journal, pmid, # associations.
+                description = study[4]+" et al. "+study[5]+" "+study[6]+" "\
+                +"PMID:"+study[7]+", associations: "+str(association_cnt[0])
+
+                study_document['description'] = description
 
 
                 #############################################
