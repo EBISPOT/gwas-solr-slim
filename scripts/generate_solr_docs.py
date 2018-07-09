@@ -64,7 +64,7 @@ def get_publicaton_data():
     publication_attr_list = ['id', 'pmid', 'journal', 'title', \
         'publicationDate', 'resourcename', 'author', 'author_s', \
         'authorAscii', 'authorAscii_s', 'authorsList', \
-        'associationCount', 'studyCount']
+        'associationCount', 'studyCount', 'description']
 
     try:
         ip, port, sid, username, password = gwas_data_sources.get_db_properties(DATABASE_NAME)
@@ -150,6 +150,19 @@ def get_publicaton_data():
                 study_cnt = cursor.fetchone()
 
                 publication_document[publication_attr_list[12]] = study_cnt[0]
+
+
+                #############################
+                # Create description field
+                #############################
+                # The description field is formatted as:
+                # First author, year, journal, pmid, # studies, # associations.
+                year, month, day = publication[4].split("-")
+                description = author_data[0][0]+" et al. "+year+" "+publication[2]+" "\
+                +"PMID:"+publication[1]+", studies: "+str(study_cnt[0])+", associations: "\
+                +str(association_cnt[0])
+
+                publication_document['description'] = description
 
 
                 ######################################
@@ -550,7 +563,7 @@ def get_variant_data():
 
         variant_data = variant_cls.get_snps(cursor)
 
-
+ 
         for variant in tqdm(variant_data, desc='Get Variant data'):
             # Object for Variant data
             variant_document = {}
