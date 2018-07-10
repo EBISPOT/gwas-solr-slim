@@ -110,7 +110,7 @@
        -->
 	<!-- Common, mandatory fields for all docs -->
   <field name="resourcename" type="text_general" indexed="true" stored="true" multiValued="false" /> <!-- Added to text -->
-  <field name="details" type="text_general" indexed="false" stored="true" multiValued="false" />
+  <field name="description" type="text_general" indexed="false" stored="true" multiValued="false" />
   <field name="id" type="string" indexed="true" stored="true" required="true" multiValued="false" />
   <field name="title" type="text_general" indexed="true" stored="true" multiValued="false" />
   <field name="link" type="text_general" indexed="false" stored="true" multiValued="false" />
@@ -118,6 +118,8 @@
   <!-- Commonly used, but not mandatory fields shared by many document types -->
   <field name="associationCount" type="int" indexed="false" stored="true" multiValued="false" />
   <field name="studyCount" type="int" indexed="false" stored="true" multiValued="false" />
+  <field name="reportedTrait_s" type="text_general" indexed="true" stored="true" multiValued="false" />
+  <field name="reportedTrait" type="text_general" indexed="true" stored="true" multiValued="true" />
 
 	<!--specific fields for publication -->
   <field name="pmid" type="string" indexed="true" stored="true" multiValued="false" />
@@ -128,22 +130,14 @@
   <field name="authorAscii" type="text_general" indexed="true" stored="true" multiValued="true" />
   <field name="authorAscii_s" type="text_general" indexed="true" stored="true" multiValued="false" />
   <field name="authorsList" type="text_general" indexed="true" stored="true" multiValued="true" />
-  <field name="orcid" type="string" indexed="true" stored="true" multiValued="false" />
-  <field name="last_modified" type="date" indexed="true" stored="true" />
-  <field name="description" type="text_general" indexed="false" stored="true" multiValued="false" />
+  <!-- <field name="orcid" type="string" indexed="true" stored="true" multiValued="false" /> -->
+  <!-- <field name="last_modified" type="date" indexed="true" stored="true" /> -->
 
   <!-- specific fields for study -->
 	<field name="accessionId" type="string" indexed="true" stored="true" multiValued="false" />
   <field name="platform" type="string" indexed="true" stored="true" multiValued="false" />
-  <field name="traitName_s" type="text_general" indexed="true" stored="true" multiValued="false" /> <!-- mapped trait -->
   <field name="ancestralGroups" type="text_general" indexed="true" stored="true" multiValued="true" />
-  <field name="traitName" type="text_general" indexed="true" stored="true" multiValued="true" />
-
-    <!-- specific fields for variant -->
-	<field name="consequence" type="text_general" indexed="true" stored="true" multiValued="false" />
-  <field name="chromosomeName" type="text_general" indexed="true" stored="true" multiValued="false" />
-  <field name="chromosomePosition" type="text_general" indexed="true" stored="true" multiValued="false" />
-  <field name="region" type="text_general" indexed="true" stored="true" multiValued="false" />
+  <field name="fullPvalueSet" type="boolean" indexed="false" stored="false" multiValued="false" />
 
   <!-- specific fields for trait -->
   <field name="mappedUri" type="string" indexed="false" stored="true" multiValued="false" />
@@ -151,9 +145,17 @@
   <field name="parent" type="text_general" indexed="true" stored="true" multiValued="true" />
   <field name="synonyms" type="string" indexed="true" stored="true" multiValued="true" />
   <field name="mappedLabel" type="text_general" indexed="true" stored="true" multiValued="false" />
+  <field name="mappedTrait" type="text_general" indexed="true" stored="true" multiValued="false" />
+  
+  <!-- specific fields for variant -->
+	<field name="consequence" type="text_general" indexed="true" stored="true" multiValued="false" />
+  <field name="chromosomeName" type="text_general" indexed="true" stored="true" multiValued="false" />
+  <field name="chromosomePosition" type="text_general" indexed="true" stored="true" multiValued="false" />
+  <field name="region" type="text_general" indexed="true" stored="true" multiValued="false" />
 
   <!-- specific fields for gene -->
   <!-- <field name="reported_trait" type="text_general" indexed="true" stored="true" multiValued="false" /> -->
+
 
     <!-- Main body of document extracted by SolrCell.
          NOTE: This field is not indexed by default, since it is also copied to "text"
@@ -239,7 +241,7 @@
     <copyField source="title" dest="text" />
     <copyField source="pmid" dest="text" />
     <copyField source="accessionId" dest="text" />	
-	  <copyField source="orcid" dest="text" /> 
+	  <!-- <copyField source="orcid" dest="text" /> --> 
     <copyField source="journal" dest="text"  />
     <copyField source="authorsList" dest="text" />
     <copyField source="author" dest="text" />

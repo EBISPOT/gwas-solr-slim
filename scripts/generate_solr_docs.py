@@ -482,8 +482,8 @@ def get_trait_data():
 
     all_trait_data = []
 
-    trait_attr_list = ['id', 'mappedLabel', 'mappedUri', 'studyCount', \
-        'resourcename', 'traitName_s', 'traitName', 'associationCount', \
+    trait_attr_list = ['id', 'mappedTrait', 'mappedUri', 'studyCount', \
+        'resourcename', 'reportedTrait_s', 'reportedTrait', 'associationCount', \
         'shortForm', 'synonyms', 'parent']
 
     try:
@@ -503,7 +503,7 @@ def get_trait_data():
                 mapped_trait_document = {}
 
                 mapped_trait_document['id'] = mapped_trait[4]+":"+str(mapped_trait[0])
-                mapped_trait_document['mappedLabel'] = mapped_trait[1]
+                mapped_trait_document['mappedTrait'] = mapped_trait[1]
                 mapped_trait_document['mappedUri'] = mapped_trait[2]
                 mapped_trait_document['studyCount'] = mapped_trait[3]
                 mapped_trait_document['resourcename'] = mapped_trait[4]
@@ -518,10 +518,10 @@ def get_trait_data():
 
 
                 # add reported trait as string
-                mapped_trait_document['traitName_s'] = all_reported_traits[0][1]
+                mapped_trait_document['reportedTrait_s'] = all_reported_traits[0][1]
 
                 # add reported trait as list
-                mapped_trait_document['traitName'] = [all_reported_traits[0][1]]
+                mapped_trait_document['reportedTrait'] = [all_reported_traits[0][1]]
 
                 
                 #######################################
