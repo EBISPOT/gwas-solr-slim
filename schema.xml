@@ -158,7 +158,7 @@
   <field name="geneDescription" type="text_general" indexed="false" stored="true" multiValued="false" />
   <field name="ensemblID" type="string" indexed="true" stored="true" multiValued="false" />
   <field name="geneName" type="string" indexed="true" stored="true" multiValued="false" />
-  <field name="synonyms" type="text_general" indexed="true" stored="true" multiValued="false" />  
+  <field name="synonymsGene" type="text_general" indexed="true" stored="true" multiValued="false" />  
   <field name="biotype" type="text_general" indexed="true" stored="true" multiValued="false" />
   <field name="variants" type="string" indexed="true" stored="true" multiValued="true" />
   <field name="region" type="text_general" indexed="true" stored="true" multiValued="false" />  
@@ -260,7 +260,7 @@
     <!-- Copying fields from the gene documents -->
     <copyField source="ensemblID" dest="text" />
     <copyField source="geneName" dest="text"  />
-    <copyField source="synonyms" dest="text" />
+    <copyField source="synonymsGene" dest="text" />
     <copyField source="region" dest="text" />
 
     <!-- Create a string version of author for faceting >
