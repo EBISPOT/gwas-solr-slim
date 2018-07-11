@@ -155,7 +155,18 @@
 
   <!-- specific fields for gene -->
   <!-- <field name="reported_trait" type="text_general" indexed="true" stored="true" multiValued="false" /> -->
+  <field name="geneDescription" type="text_general" indexed="false" stored="true" multiValued="false" />
+  <field name="ensemblID" type="string" indexed="true" stored="true" multiValued="false" />
+  <field name="geneName" type="string" indexed="true" stored="true" multiValued="false" />
+  <field name="synonyms" type="text_general" indexed="true" stored="true" multiValued="false" />  
+  <field name="biotype" type="text_general" indexed="true" stored="true" multiValued="false" />
+  <field name="variants" type="string" indexed="true" stored="true" multiValued="true" />
+  <field name="region" type="text_general" indexed="true" stored="true" multiValued="false" />  
 
+  <field name="mapping" type="text_general" indexed="true" stored="true" multiValued="true" />  
+  <field name="mapping.chr" type="text_general" indexed="true" stored="true" multiValued="false" />  
+  <field name="mapping.start" type="int" indexed="true" stored="true" multiValued="false" />  
+  <field name="mapping.end" type="int" indexed="true" stored="true" multiValued="false" />  
 
     <!-- Main body of document extracted by SolrCell.
          NOTE: This field is not indexed by default, since it is also copied to "text"
@@ -245,6 +256,12 @@
     <copyField source="journal" dest="text"  />
     <copyField source="authorsList" dest="text" />
     <copyField source="author" dest="text" />
+
+    <!-- Copying fields from the gene documents -->
+    <copyField source="ensemblID" dest="text" />
+    <copyField source="geneName" dest="text"  />
+    <copyField source="synonyms" dest="text" />
+    <copyField source="region" dest="text" />
 
     <!-- Create a string version of author for faceting >
     <copyField source="author" dest="author_s" />
