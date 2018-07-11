@@ -161,7 +161,6 @@
   <field name="synonymsGene" type="text_general" indexed="true" stored="true" multiValued="false" />  
   <field name="biotype" type="text_general" indexed="true" stored="true" multiValued="false" />
   <field name="variants" type="string" indexed="true" stored="true" multiValued="true" />
-  <field name="region" type="text_general" indexed="true" stored="true" multiValued="false" />  
 
   <field name="mapping" type="text_general" indexed="true" stored="true" multiValued="true" />  
   <field name="mapping.chr" type="text_general" indexed="true" stored="true" multiValued="false" />  
