@@ -152,6 +152,8 @@
   <field name="chromosomeName" type="text_general" indexed="true" stored="true" multiValued="false" />
   <field name="chromosomePosition" type="text_general" indexed="true" stored="true" multiValued="false" />
   <field name="region" type="text_general" indexed="true" stored="true" multiValued="false" />
+  <field name="mappedGenes" type="string" indexed="true" stored="true" multiValued="true" />
+  <field name="rsID" type="text_general" indexed="true" stored="true" multiValued="false" />
 
   <!-- specific fields for gene -->
   <!-- <field name="reported_trait" type="text_general" indexed="true" stored="true" multiValued="false" /> -->
@@ -260,6 +262,10 @@
     <copyField source="ensemblID" dest="text" />
     <copyField source="geneName" dest="text"  />
     <copyField source="synonymsGene" dest="text" />
+
+    <!-- Copying fields from the variant documents -->
+    <copyField source="rsID" dest="text" />
+    <copyField source="mappedGenes" dest="text"  />
     <copyField source="region" dest="text" />
 
     <!-- Create a string version of author for faceting >
