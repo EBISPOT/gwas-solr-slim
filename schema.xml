@@ -137,7 +137,7 @@
 	<field name="accessionId" type="string" indexed="true" stored="true" multiValued="false" />
   <field name="platform" type="string" indexed="true" stored="true" multiValued="false" />
   <field name="ancestralGroups" type="text_general" indexed="true" stored="true" multiValued="true" />
-  <field name="fullPvalueSet" type="boolean" indexed="false" stored="false" multiValued="false" />
+  <field name="fullPvalueSet" type="boolean" indexed="true" stored="true" multiValued="false" />
 
   <!-- specific fields for trait -->
   <field name="mappedUri" type="string" indexed="false" stored="true" multiValued="false" />
@@ -253,7 +253,8 @@
     <copyField source="title" dest="text" />
     <copyField source="pmid" dest="text" />
     <copyField source="accessionId" dest="text" />	
-	  <!-- <copyField source="orcid" dest="text" /> --> 
+	  
+    <!-- <copyField source="orcid" dest="text" /> --> 
     <copyField source="journal" dest="text"  />
     <copyField source="authorsList" dest="text" />
     <copyField source="author" dest="text" />
@@ -267,6 +268,10 @@
     <copyField source="rsID" dest="text" />
     <copyField source="mappedGenes" dest="text"  />
     <copyField source="region" dest="text" />
+
+    <!-- Copy filelds from study documents -->
+    <copyField source="reportedTrait_s" dest="text" />
+    <copyField source="mappedTrait" dest="text" />
 
     <!-- Create a string version of author for faceting >
     <copyField source="author" dest="author_s" />
