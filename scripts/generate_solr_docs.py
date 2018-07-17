@@ -1,27 +1,22 @@
-# Activate Python venv for the script - uncomment to run script on commandline
-activate_this_file = "/path/to/bin/activate_this.py"
-execfile(activate_this_file, dict(__file__ = activate_this_file))
-
 import cx_Oracle
 import contextlib
 import argparse
 import sys
 from tqdm import tqdm
 import json
-# import csv
-# from pprint import pprint
+import pandas as pd
 import os.path
+import datetime
 
-sys.path.insert(0, '/path/to/gwas_data_sources')
-import gwas_data_sources
 
-import OLSData
+# Loading custom packages:
 import DBConnection
-
+import gwas_data_sources
+import OLSData
 import Variant
+#import Study
 
-
-def get_publicaton_data():
+def get_publicaton_data(connection, limit = 0):
     '''
     Get Publication data for Solr document.
     '''
@@ -180,71 +175,38 @@ def get_publicaton_data():
     except cx_Oracle.DatabaseError, exception:
         print exception
 
-
-def format_data(data, data_type):
+def save_data(data, docfileSuffix, data_type = None):
     '''
-    Convert list of data to JSON and write to file.
+    data: list of solr ducments as dictionaries
+        dictionaries have to contain the resourcename key.
     '''
-    data_dict = {}
-    data_solr_doc = []
 
+    ##
+    ## In the future, we can include a test here to make sure that the documents 
+    ## contain all the type specific fields.
+    ## Now we are only checking the common ones
+    ##
 
-    # Create Publication documents
-    if data_type in ['publication', 'all']:
-        jsonData = json.dumps(data)
+    requireFields = {
+        'required' : ['id', 'title', 'description', 'resourcename'],
+        'variant' : ['associationCount','chromosomeName', 'chromosomePosition', 'mappedGenes', 'region', 'rsID', 'consequence']
+    }
 
-        my_path = os.path.abspath(os.path.dirname(__file__))
-        path = os.path.join(my_path, "data/publication_data.json")
+    # Testing if documents have the required fields:
+    for field in requireFields['required']:
+        if not field in data[0].keys():
+            sys.exit("[Error] The provided data does has not %s field. Exiting." % field)
 
-        with open(path, 'w') as outfile:
-            outfile.write(jsonData)
+    resourcename = data[0]['resourcename']
 
+    # Saving data into file:
+    jsonData = json.dumps(data)
+    my_path = os.path.abspath(os.path.dirname(__file__))
+    path = os.path.join(my_path, "data/%s_data_%s.json" % (resourcename, docfileSuffix))
+    with open(path, 'w') as outfile:
+        outfile.write(jsonData)
 
-    # Create Study documents
-    if data_type in ['study', 'all']:
-        jsonData = json.dumps(data)
-
-        my_path = os.path.abspath(os.path.dirname(__file__))
-        path = os.path.join(my_path, "data/study_data.json")
-
-        with open(path, 'w') as outfile:
-            outfile.write(jsonData)
-
-
-    # Create Trait documents
-    if data_type in ['trait', 'all']:
-        jsonData = json.dumps(data)
-
-        my_path = os.path.abspath(os.path.dirname(__file__))
-        path = os.path.join(my_path, "data/trait_data.json")
-
-        with open(path, 'w') as outfile:
-            outfile.write(jsonData)
-
-
-    # Create Variant documents
-    if data_type in ['variant', 'all']:
-        jsonData = json.dumps(data)
-
-        my_path = os.path.abspath(os.path.dirname(__file__))
-        path = os.path.join(my_path, "data/variant_data.json")
-
-        with open(path, 'w') as outfile:
-            outfile.write(jsonData)
-
-
-    # Create Gene documents
-    if data_type in ['gene', 'all']:
-        jsonData = json.dumps(data)
-
-        my_path = os.path.abspath(os.path.dirname(__file__))
-        path = os.path.join(my_path, "data/gene_data.json")
-
-        with open(path, 'w') as outfile:
-            outfile.write(jsonData)
-
-
-def get_study_data():
+def get_study_data(connection, limit = 0):
     '''
     Get Study data for Solr document.
     '''
@@ -448,7 +410,7 @@ def get_study_data():
         print exception
 
 
-def get_trait_data():
+def get_trait_data(connection, limit = 0):
     '''
     Given each EFO trait, get all Reported trait information.
     '''
@@ -463,19 +425,18 @@ def get_trait_data():
 
 
     reported_trait_sql = """
-        SELECT DISTINCT(ET.ID), listagg(DT.TRAIT, ', ') WITHIN GROUP (ORDER BY DT.TRAIT)
+        SELECT ET.ID, DT.TRAIT
         FROM STUDY S, EFO_TRAIT ET, DISEASE_TRAIT DT, STUDY_EFO_TRAIT SETR, STUDY_DISEASE_TRAIT SDT
-        WHERE S.ID=SETR.STUDY_ID and SETR.EFO_TRAIT_ID=ET.ID 
-            and S.ID=SDT.STUDY_ID and SDT.DISEASE_TRAIT_ID=DT.ID 
-            and ET.ID = :trait_id
-        GROUP BY ET.ID
+        WHERE S.ID=SETR.STUDY_ID AND SETR.EFO_TRAIT_ID=ET.ID
+        AND S.ID=SDT.STUDY_ID AND SDT.DISEASE_TRAIT_ID=DT.ID
+        AND ET.ID = :trait_id
     """
 
     trait_association_cnt_sql = """
-        SELECT COUNT(ET.ID)
+        SELECT ET.TRAIT, COUNT(ET.ID)
         FROM EFO_TRAIT ET, ASSOCIATION_EFO_TRAIT AET, ASSOCIATION A
-        WHERE ET.ID=AET.EFO_TRAIT_ID and AET.ASSOCIATION_ID=A.ID
-            and ET.ID = :trait_id
+        WHERE ET.ID=AET.EFO_TRAIT_ID AND AET.ASSOCIATION_ID=A.ID
+              AND ET.ID = :trait_id
         GROUP BY ET.TRAIT
     """
 
@@ -606,65 +567,72 @@ def get_trait_data():
     except cx_Oracle.DatabaseError, exception:
         print exception
 
-
-
-def get_variant_data():
+def get_variant_data(DATABASE_NAME, limit = 0):
     '''
     Get Variant data for Solr document.
     '''
 
+    # function to retrieve further data from the database:
+    def get_more_variant_data(row):
+        # Extracting basic variant information:
+        resourcename = 'variant'
+        ID = row['ID']
+        rsID = row['RS_ID']
+        consequence = row['FUNCTIONAL_CLASS']
+
+        # Extracting genomic location:
+        location = variant_cls.get_variant_location(ID)
+
+        # Extracting mapped genes:
+        mapped_genes_list = variant_cls.get_mapped_genes(ID)
+        
+        mapped_genes_names = [x.split("|")[0] for x in mapped_genes_list]
+
+        # Extracting association count:
+        associations = variant_cls.get_association_count(ID)
+        
+        # Combining data into a dictionary:
+        varDoc = {
+            'resourcename' : resourcename,
+            'id' : "%s-%s" % (resourcename,ID),
+            'title' : rsID,
+            'rsID' : rsID,
+            'associationCount' : associations,
+            'mappedGenes' : mapped_genes_list,
+            'chromosomeName' : location['chromosome'],
+            'chromosomePosition' : location['position'],
+            'region' : location['region'],
+            'consequence' : consequence,
+            'link' : 'variants/rs7329174'
+
+        }
+        varDoc['description'] =  '%s:%s, %s, %s, mapped to: %s, associaitons: %s' %(
+                    varDoc['chromosomeName'], varDoc['chromosomePosition'], varDoc['region'], varDoc['consequence'],
+                    ",".join(mapped_genes_names),varDoc['associationCount']
+                )
+
+        # Adding to document list:
+        all_variant_data.append(varDoc)
+
+    # Initialize empty list for the documents:
     all_variant_data = []
 
-    variant_attr_list = ['id', 'rsId', 'snpType', 'resourcename', \
-        'chromosomeName', 'chromosomePosition', 'region']
-
-    
+    # Step 1: initialize variant object:
     variant_cls = Variant.Variant(DATABASE_NAME)
-    connection = variant_cls.get_database_connection()
 
+    # Step 2: retrieve all the variants in the database:
+    variants_df = variant_cls.get_snps()
 
-    with contextlib.closing(connection.cursor()) as cursor:
+    # Inintialize progress bar:
+    tqdm.pandas(desc="Returning variant data")
 
-        variant_data = variant_cls.get_snps(cursor)
-
- 
-        for variant in tqdm(variant_data, desc='Get Variant data'):
-            # Object for Variant data
-            variant_document = {}
-
-            # Add data from variant to dictionary
-            variant_document[variant_attr_list[0]] = variant[3]+":"+str(variant[0])
-            variant_document[variant_attr_list[1]] = variant[1]
-            variant_document[variant_attr_list[2]] = variant[2]
-            variant_document[variant_attr_list[3]] = variant[3]
-
-            ############################
-            # Get Location information
-            ############################
-            all_snp_locations = variant_cls.get_variant_location(cursor, variant[0])
-
-
-            # Add snp location to variant_data data, 
-            if not all_snp_locations:
-                # add placeholder values
-                # NOTE: Current Solr data does not include field when value is null
-                variant_document[variant_attr_list[4]] = None
-                variant_document[variant_attr_list[5]] = None
-                variant_document[variant_attr_list[6]] = None
-            else:
-                variant_document[variant_attr_list[4]] = all_snp_locations[0][0]
-                variant_document[variant_attr_list[4]] = all_snp_locations[0][1]
-                variant_document[variant_attr_list[4]] = all_snp_locations[0][2]
-
-
-            all_variant_data.append(variant_document)
-
-
-    connection.close()
+    # Step 3: Calling apply to retrieve all variant data:
+    if limit != 0:
+        variants_df[1:limit].progress_apply(get_more_variant_data, axis = 1)
+    else:
+        variants_df.progress_apply(get_more_variant_data, axis = 1)
 
     return all_variant_data
-
-
 
 def get_gene_data():
     '''
@@ -843,67 +811,53 @@ def get_gene_data():
     except cx_Oracle.DatabaseError, exception:
         print exception
 
-
-
-
-
 if __name__ == '__main__':
     '''
     Create Solr documents for categories of interest.
     '''
+    global DATABASE_NAME
+
 
     # Commandline arguments
     parser = argparse.ArgumentParser()
     # parser.add_argument('--mode', default='debug', choices=['debug', 'production'],
     #                     help='Run as (default: debug).')
-    parser.add_argument('--database', default='SPOTREL', choices=['DEV3', 'SPOTREL'], 
+    parser.add_argument('--database', default='SPOTREL', choices=['DEV3', 'SPOTREL', 'DEV2'], 
                         help='Run as (default: SPOTREL).')
+    parser.add_argument('--limit', type = int, help='Limit the nuber of document to this number for testing purposes.')
     parser.add_argument('--data_type', default='publication', \
                         choices=['publication', 'study', 'trait', 'variant', \
                         'gene', 'all'],
                         help='Run as (default: publication).')
+    
     args = parser.parse_args()
-
-    global DATABASE_NAME
     DATABASE_NAME = args.database
+    limit = args.limit
 
+    # Docfile suffix:
+    now = datetime.datetime.now()
+    docfileSuffix = now.strftime("%Y.%m.%d-%H.%M")
 
-    # Create Publication documents
-    if args.data_type in ['publication', 'all']:
-        publication_datatype  = 'publication'
-        publication_data = get_publicaton_data()
-        format_data(publication_data, publication_datatype)
+    # Initialize database connection:
+    db_object = DBConnection.gwasCatalogDbConnector(DATABASE_NAME)
 
+    # select function:  
+    dispatcher = {
+        'publication' : get_publicaton_data, 
+        'study' : get_study_data, 
+        'trait' : get_trait_data, 
+        'variant' : get_variant_data, 
+        'gene' : get_gene_data
+    }
 
-    # Create Study documents
-    if args.data_type in ['study', 'all']:
-        study_data_type  = 'study'
-        study_data = get_study_data()
-        format_data(study_data, study_data_type)
+    # Get the list of ducments to create:
+    docTypes = [args.data_type]
+    if args.data_type == 'all': docTypes = ['publication', 'study', 'trait', 'variant', 'gene']
 
+    # looping through all the document types and generate document:
+    for docType in docTypes:
+        document_data = dispatcher[docType](db_object.connection, limit)
+        save_data(document_data, docfileSuffix)
 
-    # Create EFO documents, are these needed for labs pages?
-    # efo_data = get_efo_data()
-
-
-    # Create Trait documents
-    if args.data_type in ['trait', 'all']:
-        trait_data_type  = 'trait'
-        trait_data = get_trait_data()
-        format_data(trait_data, trait_data_type)
-
-
-    # Create Variant documents
-    if args.data_type in ['variant', 'all']:
-        variant_data_type  = 'variant'
-        variant_data = get_variant_data()
-        format_data(variant_data, variant_data_type)
-
-
-    # Create Gene documents
-    if args.data_type in ['gene', 'all']:
-        gene_data_type  = 'gene'
-        gene_data = get_gene_data()
-        # NOTE: gene_data is now a dict
-        format_data(gene_data, gene_data_type)
-
+    # Closing database connection:
+    db_object.close()
