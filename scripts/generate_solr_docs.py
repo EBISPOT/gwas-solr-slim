@@ -1,22 +1,27 @@
+# Activate Python venv for the script - uncomment to run script on commandline
+activate_this_file = "/path/to/bin/activate_this.py"
+execfile(activate_this_file, dict(__file__ = activate_this_file))
+
 import cx_Oracle
 import contextlib
 import argparse
 import sys
 from tqdm import tqdm
 import json
-import pandas as pd
+import pandas
 import os.path
 import datetime
 
-
-# Loading custom packages:
+sys.path.insert(0, '/path/to/gwas_data_sources')
+# Custom modules
 import DBConnection
 import gwas_data_sources
 import OLSData
 import Variant
-#import Study
+# import Study
 
-def get_publicaton_data(connection, limit = 0):
+
+def get_publicaton_data(connection, limit=0):
     '''
     Get Publication data for Solr document.
     '''
@@ -24,10 +29,10 @@ def get_publicaton_data(connection, limit = 0):
     # List of queries
     publication_sql = """
         SELECT P.ID, P.PUBMED_ID, P.PUBLICATION, P.TITLE,
-            TO_CHAR(P.PUBLICATION_DATE, 'yyyy-mm-dd'), 'publication' as resourcename
+            TO_CHAR(P.PUBLICATION_DATE, 'yyyy-mm-dd'),
+            'publication' as resourcename
         FROM PUBLICATION P
     """
-
 
     publication_author_list_sql = """
         SELECT A.FULLNAME, A.FULLNAME_STANDARD, PA.SORT, A.ORCID
@@ -37,14 +42,12 @@ def get_publicaton_data(connection, limit = 0):
         ORDER BY PA.SORT ASC
     """
 
-
     publication_association_cnt_sql = """
         SELECT COUNT(A.ID)
         FROM STUDY S, PUBLICATION P, ASSOCIATION A
         WHERE S.PUBLICATION_ID=P.ID and A.STUDY_ID=S.ID
             and P.PUBMED_ID= :pubmed_id
     """
-
 
     publication_study_cnt_sql = """
         SELECT COUNT(S.ID)
@@ -53,63 +56,61 @@ def get_publicaton_data(connection, limit = 0):
             and P.PUBMED_ID= :pubmed_id
     """
 
-
     all_publication_data = []
 
-    publication_attr_list = ['id', 'pmid', 'journal', 'title', \
-        'publicationDate', 'resourcename', 'author', 'author_s', \
-        'authorAscii', 'authorAscii_s', 'authorsList', \
-        'associationCount', 'studyCount', 'description']
+    publication_attr_list = [
+        'id', 'pmid', 'journal', 'title',
+        'publicationDate', 'resourcename', 'author', 'author_s',
+        'authorAscii', 'authorAscii_s', 'authorsList',
+        'associationCount', 'studyCount', 'description'
+    ]
 
     try:
-        ip, port, sid, username, password = gwas_data_sources.get_db_properties(DATABASE_NAME)
+        ip, port, sid, username, password = gwas_data_sources.get_db_properties(DATABASE_NAME)  # noqa
         dsn_tns = cx_Oracle.makedsn(ip, port, sid)
         connection = cx_Oracle.connect(username, password, dsn_tns)
 
         with contextlib.closing(connection.cursor()) as cursor:
 
             cursor.execute(publication_sql)
-
             publication_data = cursor.fetchall()
 
-
-            for publication in tqdm(publication_data, desc='Get Publication data'):
+            for publication in tqdm(publication_data, desc='Get Publication data'):  # noqa
                 publication = list(publication)
 
                 publication_document = {}
 
                 # Add data from gene to dictionary
-                publication_document[publication_attr_list[0]] = publication[5]+":"+str(publication[0])
+                publication_document[publication_attr_list[0]] = publication[5]+":"+str(publication[0])  # noqa
                 publication_document[publication_attr_list[1]] = publication[1]
                 publication_document[publication_attr_list[2]] = publication[2]
                 publication_document[publication_attr_list[3]] = publication[3]
                 publication_document[publication_attr_list[4]] = publication[4]
                 publication_document[publication_attr_list[5]] = publication[5]
 
-
                 ############################
                 # Get Author data
                 ############################
-                cursor.prepare(publication_author_list_sql)                
+                cursor.prepare(publication_author_list_sql)
                 r = cursor.execute(None, {'pubmed_id': publication[1]})
                 author_data = cursor.fetchall()
 
                 # Create first author
                 # first_author = [author_data[0][0]]
-                publication_document[publication_attr_list[6]] = [author_data[0][0]]
+                publication_document[publication_attr_list[6]] = [author_data[0][0]]  # noqa
 
                 # Create first author as string
                 # author_s = author_data[0][0]
-                publication_document[publication_attr_list[7]] = author_data[0][0]
+                publication_document[publication_attr_list[7]] = author_data[0][0]  # noqa
 
                 # Create ascii author list
                 # author_ascii = [author_data[0][1]]
-                publication_document[publication_attr_list[8]] =  [author_data[0][1]]
+                publication_document[publication_attr_list[8]] = [author_data[0][1]]  # noqa
 
                 # Create ascii author string 
                 # author_ascii_s = author_data[0][1]
                 # publication.append(author_ascii_s)
-                publication_document[publication_attr_list[9]] = author_data[0][1]
+                publication_document[publication_attr_list[9]] = author_data[0][1]  # noqa
 
                 if author_data[0][3] is None:
                     author_orcid = 'NA'
@@ -118,7 +119,7 @@ def get_publicaton_data(connection, limit = 0):
                 
                 authorList = []
                 for author in author_data:
-                    # create author list, e.g. "Grallert H | Grallert H | 5 | ORCID"
+                    # author list, e.g. "Grallert H | Grallert H | 5 | ORCID"
                     author_formatted = str(author[0])+" | "+str(author[1])+\
                         " | "+str(author[2])+" | "+author_orcid
                     authorList.append(author_formatted)
@@ -175,7 +176,8 @@ def get_publicaton_data(connection, limit = 0):
     except cx_Oracle.DatabaseError, exception:
         print exception
 
-def save_data(data, docfileSuffix, data_type = None):
+
+def save_data(data, docfileSuffix, data_type=None):
     '''
     data: list of solr ducments as dictionaries
         dictionaries have to contain the resourcename key.
@@ -195,7 +197,7 @@ def save_data(data, docfileSuffix, data_type = None):
     # Testing if documents have the required fields:
     for field in requireFields['required']:
         if not field in data[0].keys():
-            sys.exit("[Error] The provided data does has not %s field. Exiting." % field)
+            sys.exit("[ERROR] The provided data does has not %s field. Exiting." % field)
 
     resourcename = data[0]['resourcename']
 
@@ -206,7 +208,8 @@ def save_data(data, docfileSuffix, data_type = None):
     with open(path, 'w') as outfile:
         outfile.write(jsonData)
 
-def get_study_data(connection, limit = 0):
+
+def get_study_data(connection, limit=0):
     '''
     Get Study data for Solr document.
     '''
@@ -410,34 +413,35 @@ def get_study_data(connection, limit = 0):
         print exception
 
 
-def get_trait_data(connection, limit = 0):
+def get_trait_data(connection, limit=0):
     '''
     Given each EFO trait, get all Reported trait information.
     '''
     
     # Only select EFOs that are already assigned to Studies
     efo_sql = """
-        SELECT DISTINCT(ET.ID), ET.TRAIT, ET.URI, COUNT(S.ID), 'trait' as resourcename
+        SELECT DISTINCT(ET.ID), ET.TRAIT, ET.URI, COUNT(S.ID), 
+            'trait' as resourcename, ET.SHORT_FORM
         FROM STUDY S, EFO_TRAIT ET, STUDY_EFO_TRAIT SETR
         WHERE S.ID=SETR.STUDY_ID and SETR.EFO_TRAIT_ID=ET.ID
-        GROUP BY ET.ID, ET.TRAIT, 'trait', ET.URI
+        GROUP BY ET.ID, ET.TRAIT, 'trait', ET.URI, ET.SHORT_FORM
     """
 
-
     reported_trait_sql = """
-        SELECT ET.ID, DT.TRAIT
-        FROM STUDY S, EFO_TRAIT ET, DISEASE_TRAIT DT, STUDY_EFO_TRAIT SETR, STUDY_DISEASE_TRAIT SDT
-        WHERE S.ID=SETR.STUDY_ID AND SETR.EFO_TRAIT_ID=ET.ID
-        AND S.ID=SDT.STUDY_ID AND SDT.DISEASE_TRAIT_ID=DT.ID
-        AND ET.ID = :trait_id
+        SELECT listagg(REPORTED_DISEASE_TRAIT, ', ') WITHIN GROUP (ORDER BY REPORTED_DISEASE_TRAIT)
+        FROM ( 
+            SELECT DISTINCT DT.TRAIT AS REPORTED_DISEASE_TRAIT 
+            FROM STUDY S, EFO_TRAIT ET, DISEASE_TRAIT DT, STUDY_EFO_TRAIT SETR, STUDY_DISEASE_TRAIT SDT 
+            WHERE S.ID=SETR.STUDY_ID and SETR.EFO_TRAIT_ID=ET.ID 
+            and S.ID=SDT.STUDY_ID and SDT.DISEASE_TRAIT_ID=DT.ID 
+            and ET.ID= :trait_id)
     """
 
     trait_association_cnt_sql = """
-        SELECT ET.TRAIT, COUNT(ET.ID)
+        SELECT COUNT(A.ID)
         FROM EFO_TRAIT ET, ASSOCIATION_EFO_TRAIT AET, ASSOCIATION A
         WHERE ET.ID=AET.EFO_TRAIT_ID AND AET.ASSOCIATION_ID=A.ID
-              AND ET.ID = :trait_id
-        GROUP BY ET.TRAIT
+              AND ET.ID= :trait_id
     """
 
 
@@ -447,6 +451,10 @@ def get_trait_data(connection, limit = 0):
         'resourcename', 'reportedTrait_s', 'reportedTrait', 'associationCount', \
         'shortForm', 'synonyms', 'parent']
 
+        # 'shortform_autosuggest', 'label_autosuggest', 'label_autosuggest_ws', \
+        # 'label_autosuggest_e', 'synonym_autosuggest', 'synonym_autosuggest_ws', \
+        # 'synonym_autosuggest_e'
+
     try:
         ip, port, sid, username, password = gwas_data_sources.get_db_properties(DATABASE_NAME)
         dsn_tns = cx_Oracle.makedsn(ip, port, sid)
@@ -454,9 +462,7 @@ def get_trait_data(connection, limit = 0):
 
 
         with contextlib.closing(connection.cursor()) as cursor:
-
             cursor.execute(efo_sql)
-
             mapped_trait_data = cursor.fetchall()
 
             for mapped_trait in tqdm(mapped_trait_data, desc='Get EFO/Mapped trait data'):
@@ -468,6 +474,14 @@ def get_trait_data(connection, limit = 0):
                 mapped_trait_document['mappedUri'] = mapped_trait[2]
                 mapped_trait_document['studyCount'] = mapped_trait[3]
                 mapped_trait_document['resourcename'] = mapped_trait[4]
+                mapped_trait_document['efoLink'] = [mapped_trait[1]+"|"+\
+                    mapped_trait[5]+"|"+mapped_trait[2]]
+
+                # Add Autosuggest fields
+                mapped_trait_document['shortform_autosuggest'] = [mapped_trait[5]]
+                mapped_trait_document['label_autosuggest'] = [mapped_trait[1]]
+                mapped_trait_document['label_autosuggest_ws'] = [mapped_trait[1]]
+                mapped_trait_document['label_autosuggest_e'] = [mapped_trait[1]]
 
 
                 #########################
@@ -477,12 +491,11 @@ def get_trait_data(connection, limit = 0):
                 r = cursor.execute(None, {'trait_id': mapped_trait[0]})
                 all_reported_traits = cursor.fetchall()
 
-
                 # add reported trait as string
-                mapped_trait_document['reportedTrait_s'] = all_reported_traits[0][1]
+                mapped_trait_document['reportedTrait_s'] = all_reported_traits[0][0]
 
                 # add reported trait as list
-                mapped_trait_document['reportedTrait'] = [all_reported_traits[0][1]]
+                mapped_trait_document['reportedTrait'] = [all_reported_traits[0][0]]
 
                 
                 #######################################
@@ -537,6 +550,10 @@ def get_trait_data(connection, limit = 0):
                     if not ols_term_data['synonyms'] == None:
                         synonyms = [synonym.encode('utf-8') for synonym in ols_term_data['synonyms']]
                         mapped_trait_document['synonyms'] = synonyms
+                        # Add autosuggest fields
+                        mapped_trait_document['synonym_autosuggest'] = synonyms
+                        mapped_trait_document['synonym_autosuggest_ws'] = synonyms
+                        mapped_trait_document['synonym_autosuggest_e'] = synonyms
                     else: 
                         synonyms = []
                         mapped_trait_document['synonyms'] = synonyms
@@ -567,7 +584,8 @@ def get_trait_data(connection, limit = 0):
     except cx_Oracle.DatabaseError, exception:
         print exception
 
-def get_variant_data(DATABASE_NAME, limit = 0):
+
+def get_variant_data(DATABASE_NAME, limit=0):
     '''
     Get Variant data for Solr document.
     '''
@@ -633,6 +651,7 @@ def get_variant_data(DATABASE_NAME, limit = 0):
         variants_df.progress_apply(get_more_variant_data, axis = 1)
 
     return all_variant_data
+
 
 def get_gene_data():
     '''
@@ -811,6 +830,7 @@ def get_gene_data():
     except cx_Oracle.DatabaseError, exception:
         print exception
 
+
 if __name__ == '__main__':
     '''
     Create Solr documents for categories of interest.
@@ -820,28 +840,25 @@ if __name__ == '__main__':
 
     # Commandline arguments
     parser = argparse.ArgumentParser()
-    # parser.add_argument('--mode', default='debug', choices=['debug', 'production'],
-    #                     help='Run as (default: debug).')
-    parser.add_argument('--database', default='SPOTREL', choices=['DEV3', 'SPOTREL', 'DEV2'], 
+    parser.add_argument('--database', default='SPOTREL', choices=['DEV3', 'SPOTREL'],
                         help='Run as (default: SPOTREL).')
-    parser.add_argument('--limit', type = int, help='Limit the nuber of document to this number for testing purposes.')
-    parser.add_argument('--data_type', default='publication', \
-                        choices=['publication', 'study', 'trait', 'variant', \
-                        'gene', 'all'],
+    parser.add_argument('--limit', type=int, help='Limit the nuber of document to this number for testing purposes.')
+    parser.add_argument('--data_type', default='publication',
+                        choices=['publication', 'study', 'trait', 'variant', 'gene', 'all'],
                         help='Run as (default: publication).')
     
     args = parser.parse_args()
     DATABASE_NAME = args.database
     limit = args.limit
 
-    # Docfile suffix:
+    # Docfile suffix
     now = datetime.datetime.now()
     docfileSuffix = now.strftime("%Y.%m.%d-%H.%M")
 
-    # Initialize database connection:
+    # Initialize database connection
     db_object = DBConnection.gwasCatalogDbConnector(DATABASE_NAME)
 
-    # select function:  
+    # select function
     dispatcher = {
         'publication' : get_publicaton_data, 
         'study' : get_study_data, 
@@ -850,14 +867,14 @@ if __name__ == '__main__':
         'gene' : get_gene_data
     }
 
-    # Get the list of ducments to create:
+    # Get the list of document types to create
     docTypes = [args.data_type]
     if args.data_type == 'all': docTypes = ['publication', 'study', 'trait', 'variant', 'gene']
 
-    # looping through all the document types and generate document:
+    # Loop through all the document types and generate document
     for docType in docTypes:
         document_data = dispatcher[docType](db_object.connection, limit)
         save_data(document_data, docfileSuffix)
 
-    # Closing database connection:
+    # Close database connection
     db_object.close()
