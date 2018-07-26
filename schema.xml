@@ -108,7 +108,7 @@
            "resourcename": From SolrCell request param resource.name.
            **These fields were not in the original basic config but were copied over from the old schema**
        -->
-    <!-- Common, mandatory fields for all docs -->
+  <!-- Common, mandatory fields for all docs -->
   <field name="resourcename" type="text_general" indexed="true" stored="true" multiValued="false" /> <!-- Added to text -->
   <field name="description" type="text_general" indexed="false" stored="true" multiValued="false" />
   <field name="id" type="string" indexed="true" stored="true" required="true" multiValued="false" />
@@ -121,7 +121,7 @@
   <field name="reportedTrait_s" type="text_general" indexed="true" stored="true" multiValued="false" />
   <field name="reportedTrait" type="text_general" indexed="true" stored="true" multiValued="true" />
 
-    <!--specific fields for publication -->
+  <!--specific fields for Publication -->
   <field name="pmid" type="string" indexed="true" stored="true" multiValued="false" />
   <field name="journal" type="string" indexed="true" stored="true" multiValued="false" />
   <field name="publicationDate" type="text_general" indexed="true" stored="true" />
@@ -132,14 +132,23 @@
   <field name="authorsList" type="text_general" indexed="true" stored="true" multiValued="true" />
   <!-- <field name="orcid" type="string" indexed="true" stored="true" multiValued="false" /> -->
   <!-- <field name="last_modified" type="date" indexed="true" stored="true" /> -->
+  <!-- <field name="studies" type="text_general" indexed="true" stored="true" multiValued="true" /> -->
+  
+  <field name="content_type" type="text_general" indexed="true" stored="true" multiValued="false" />
+  <!-- <field name="accessionId" type="text_general" indexed="true" stored="true" multiValued="false" /> -->
+  <!-- <field name="ancestralGroups" type="text_general" indexed="true" stored="true" multiValued="false" /> -->
+  <field name="parentDocument_accessionId" type="text_general" indexed="true" stored="true" multiValued="true" />
+  <field name="parentDocument_ancestralGroups" type="text_general" indexed="true" stored="true" multiValued="true" />
 
-  <!-- specific fields for study -->
-    <field name="accessionId" type="string" indexed="true" stored="true" multiValued="false" />
+
+  <!-- specific fields for Study -->
+  <!-- <field name="accessionId" type="string" indexed="true" stored="true" multiValued="false" />
+  <field name="ancestralGroups" type="text_general" indexed="true" stored="true" multiValued="true" /> -->
   <field name="platform" type="string" indexed="true" stored="true" multiValued="false" />
-  <field name="ancestralGroups" type="text_general" indexed="true" stored="true" multiValued="true" />
   <field name="fullPvalueSet" type="boolean" indexed="true" stored="true" multiValued="false" />
 
-  <!-- specific fields for trait -->
+
+  <!-- specific fields for Trait -->
   <field name="mappedUri" type="string" indexed="false" stored="true" multiValued="false" />
   <field name="shortForm" type="string" indexed="true" stored="true" multiValued="true" />
   <field name="parent" type="text_general" indexed="true" stored="true" multiValued="true" />
@@ -157,7 +166,7 @@
   <field name="synonym_autosuggest_ws" type="text_general" indexed="true" stored="true" multiValued="true" />
   <field name="synonym_autosuggest_e" type="text_general" indexed="true" stored="true" multiValued="true" /> -->
 
-  <!-- specific fields for variant -->
+  <!-- specific fields for Variant -->
     <field name="consequence" type="text_general" indexed="true" stored="true" multiValued="false" />
   <field name="chromosomeName" type="text_general" indexed="true" stored="true" multiValued="false" />
   <field name="chromosomePosition" type="text_general" indexed="true" stored="true" multiValued="false" />
@@ -165,7 +174,7 @@
   <field name="mappedGenes" type="string" indexed="true" stored="true" multiValued="true" />
   <field name="rsID" type="text_general" indexed="true" stored="true" multiValued="false" />
 
-  <!-- specific fields for gene -->
+  <!-- specific fields for Gene -->
   <!-- <field name="reported_trait" type="text_general" indexed="true" stored="true" multiValued="false" /> -->
   <field name="geneDescription" type="text_general" indexed="false" stored="true" multiValued="false" />
   <field name="ensemblID" type="string" indexed="true" stored="true" multiValued="false" />
@@ -262,7 +271,11 @@
     <!-- Text fields from SolrCell to search by default in our catch-all field -->
     <copyField source="title" dest="text" />
     <copyField source="pmid" dest="text" />
-    <copyField source="accessionId" dest="text" />  
+    <!-- <copyField source="accessionId" dest="text" />
+    <copyField source="ancestralGroups" dest="text"/> -->
+    <copyField source="parentDocument_accessionId" dest="text"/>
+    <copyField source="parentDocument_ancestralGroups" dest="text"/>
+    
       
     <!-- <copyField source="orcid" dest="text" /> --> 
     <copyField source="journal" dest="text"  />
