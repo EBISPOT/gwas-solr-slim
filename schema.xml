@@ -133,7 +133,7 @@
   <!-- <field name="orcid" type="string" indexed="true" stored="true" multiValued="false" /> -->
   <!-- <field name="last_modified" type="date" indexed="true" stored="true" /> -->
   <!-- <field name="studies" type="text_general" indexed="true" stored="true" multiValued="true" /> -->
-  
+
   <field name="content_type" type="text_general" indexed="true" stored="true" multiValued="false" />
   <!-- <field name="accessionId" type="text_general" indexed="true" stored="true" multiValued="false" /> -->
   <!-- <field name="ancestralGroups" type="text_general" indexed="true" stored="true" multiValued="false" /> -->
