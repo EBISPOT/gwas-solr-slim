@@ -1,27 +1,21 @@
-# Activate Python venv for the script - uncomment to run script on commandline
-activate_this_file = "/path/to/bin/activate_this.py"
-execfile(activate_this_file, dict(__file__ = activate_this_file))
-
 import cx_Oracle
 import contextlib
 import argparse
 import sys
 from tqdm import tqdm
 import json
-import pandas
 import os.path
 import datetime
+import pandas
 
-sys.path.insert(0, '/path/to/gwas_data_sources')
 # Custom modules
 import DBConnection
 import gwas_data_sources
 import OLSData
 import Variant
-# import Study
 
 
-def get_publicaton_data(connection, limit=0):
+def get_publication_data(connection, limit=0):
     '''
     Get Publication data for Solr document.
     '''
@@ -56,6 +50,24 @@ def get_publicaton_data(connection, limit=0):
             and P.PUBMED_ID= :pubmed_id
     """
 
+    publication_study_sql = """
+        SELECT S.ID, S.ACCESSION_ID 
+        FROM STUDY S, PUBLICATION P 
+        WHERE S.PUBLICATION_ID = P.ID 
+            and P.PUBMED_ID= :pubmed_id
+    """
+
+    study_ancestral_groups_sql = """
+        SELECT  x.ID, listagg(x.ANCESTRAL_GROUP, ', ') WITHIN GROUP (ORDER BY x.ANCESTRAL_GROUP)
+        FROM (
+                SELECT DISTINCT S.ID, AG.ANCESTRAL_GROUP
+                FROM STUDY S, ANCESTRY A, ANCESTRY_ANCESTRAL_GROUP AAG, ANCESTRAL_GROUP AG
+                WHERE S.ID=A.STUDY_ID and A.ID=AAG.ANCESTRY_ID and AAG.ANCESTRAL_GROUP_ID=AG.ID
+                    and S.ID= :study_id
+            ) x
+        GROUP BY x.ID
+    """
+
     all_publication_data = []
 
     publication_attr_list = [
@@ -66,9 +78,9 @@ def get_publicaton_data(connection, limit=0):
     ]
 
     try:
-        ip, port, sid, username, password = gwas_data_sources.get_db_properties(DATABASE_NAME)  # noqa
-        dsn_tns = cx_Oracle.makedsn(ip, port, sid)
-        connection = cx_Oracle.connect(username, password, dsn_tns)
+        # ip, port, sid, username, password = gwas_data_sources.get_db_properties(DATABASE_NAME)  # noqa
+        # dsn_tns = cx_Oracle.makedsn(ip, port, sid)
+        # connection = cx_Oracle.connect(username, password, dsn_tns)
 
         with contextlib.closing(connection.cursor()) as cursor:
 
@@ -148,6 +160,60 @@ def get_publicaton_data(connection, limit=0):
                 publication_document[publication_attr_list[12]] = study_cnt[0]
 
 
+                #########################################
+                # Get List of Studies per Publication
+                #########################################
+                cursor.prepare(publication_study_sql)
+                r = cursor.execute(None, {'pubmed_id': publication[1]})
+                studies = cursor.fetchall()
+
+                # TEMP FIX
+                study_list = []
+                for study in studies:
+                    study_list.append(study[1])
+                    publication_document['parentDocument_accessionId'] = study_list
+               
+               
+                # TEMP FIX
+                all_ancestral_groups = []
+                # For each study, get the Ancestral Groups
+                # child_docs = []
+                for study in studies:
+                    # study_doc = {}
+                    # study_doc['content_type'] = 'childDocument'
+                    # study_doc['id'] = "study"+":"+str(study[0])
+                    # study_doc['accessionId'] = study[1]
+                    
+
+                    #######################
+                    # Get Ancestral groups
+                    #######################
+                    study_ancestral_groups = []
+
+                    cursor.prepare(study_ancestral_groups_sql)
+                    r = cursor.execute(None, {'study_id': study[0]})
+                    ancestral_groups = cursor.fetchall()
+
+                    if not ancestral_groups:
+                        study_ancestral_groups = 'NR'
+                        all_ancestral_groups.append('NR')
+                    else:
+                        study_ancestral_groups = [ancestral_groups[0][1]]
+                        all_ancestral_groups.append(ancestral_groups[0][1])
+
+                    # Add ancestry information to study data
+                    # study_doc['ancestralGroups'] = study_ancestral_groups
+                    
+                    # Add to child document list
+                    # child_docs.append(study_doc)
+
+                # Finally, add child_docs to publication document
+                # publication_document['_childDocuments_'] = child_docs
+                # publication_document['content_type'] = 'parentDocument'
+                publication_document['parentDocument_ancestralGroups'] = all_ancestral_groups
+
+
+
                 #############################
                 # Create description field
                 #############################
@@ -169,7 +235,7 @@ def get_publicaton_data(connection, limit=0):
                 all_publication_data.append(publication_document)
         
 
-        connection.close()
+        # connection.close()
 
         return all_publication_data
 
@@ -177,7 +243,8 @@ def get_publicaton_data(connection, limit=0):
         print exception
 
 
-def save_data(data, docfileSuffix, data_type=None):
+# def save_data(data, docfileSuffix, data_type=None):
+def save_data(data, data_type=None):
     '''
     data: list of solr ducments as dictionaries
         dictionaries have to contain the resourcename key.
@@ -189,22 +256,25 @@ def save_data(data, docfileSuffix, data_type=None):
     ## Now we are only checking the common ones
     ##
 
-    requireFields = {
-        'required' : ['id', 'title', 'description', 'resourcename'],
-        'variant' : ['associationCount','chromosomeName', 'chromosomePosition', 'mappedGenes', 'region', 'rsID', 'consequence']
-    }
+    # TODO: Move to a different data QA script
+    # requireFields = {
+    #     'required' : ['id', 'title', 'description', 'resourcename'],
+    #     'variant' : ['associationCount','chromosomeName', 'chromosomePosition', 'mappedGenes', 'region', 'rsID', 'consequence']
+    # }
 
-    # Testing if documents have the required fields:
-    for field in requireFields['required']:
-        if not field in data[0].keys():
-            sys.exit("[ERROR] The provided data does has not %s field. Exiting." % field)
+    # # Testing if documents have the required fields:
+    # for field in requireFields['required']:
+    #     if not field in data[0].keys():
+    #         sys.exit("[ERROR] The provided data does has not %s field. Exiting." % field)
+
 
     resourcename = data[0]['resourcename']
 
-    # Saving data into file:
+    # Save data to file
     jsonData = json.dumps(data)
     my_path = os.path.abspath(os.path.dirname(__file__))
-    path = os.path.join(my_path, "data/%s_data_%s.json" % (resourcename, docfileSuffix))
+    # path = os.path.join(my_path, "data/%s_data_%s.json" % (resourcename, docfileSuffix))
+    path = os.path.join(my_path, "data/%s_data.json" % (resourcename))
     with open(path, 'w') as outfile:
         outfile.write(jsonData)
 
@@ -219,7 +289,7 @@ def get_study_data(connection, limit=0):
         SELECT S.ID, S.ACCESSION_ID, 'TODO-Title-Generation' as title, 'study' as resourcename,
         A.FULLNAME, TO_CHAR(P.PUBLICATION_DATE, 'yyyy'), P.PUBLICATION, P.PUBMED_ID, S.INITIAL_SAMPLE_SIZE,
         S.FULL_PVALUE_SET
-        FROM STUDY S,PUBLICATION P, AUTHOR A
+        FROM STUDY S, PUBLICATION P, AUTHOR A
         WHERE S.PUBLICATION_ID=P.ID and P.FIRST_AUTHOR_ID=A.ID
     """
 
@@ -346,10 +416,10 @@ def get_study_data(connection, limit=0):
                 reported_traits = cursor.fetchall()
 
                 # add trait as string
-                study_document['reportedTrait_s'] = reported_traits[0][1]
+                # study_document['reportedTrait_s'] = reported_traits[0][1]
 
                 # add trait as list
-                study_document['reportedTrait'] = [reported_traits[0][1]]
+                # study_document['reportedTrait'] = [reported_traits[0][1]]
 
 
                 #######################
@@ -362,14 +432,15 @@ def get_study_data(connection, limit=0):
                 mapped_traits = cursor.fetchall()
 
                 # add trait as string
-                study_document['mappedTrait'] = mapped_traits[0][1]
+                # study_document['mappedTrait'] = mapped_traits[0][1]
 
 
                 ######################
                 # Create Title field
                 ######################
                 # AccessionID + mapped trait + initial sample
-                study_document['title'] = study[1]+": "+mapped_traits[0][1]+", "+study[8]
+                # study_document['title'] = study[1]+": "+mapped_traits[0][1]+", "+study[8]
+                study_document['title'] = study[1]+", "+study[8]
 
 
                 ###############################
@@ -392,8 +463,11 @@ def get_study_data(connection, limit=0):
                 #############################
                 # The description field is formatted as:
                 # First author, year, journal, pmid, # associations.
+                # Update: Add Mapped and Reported traits to the description
                 description = study[4]+" et al. "+study[5]+" "+study[6]+" "\
-                +"PMID:"+study[7]+", associations: "+str(association_cnt[0])
+                +"PMID:"+study[7]+", associations: "+str(association_cnt[0])+" "\
+                +"Mapped trait: "+mapped_traits[0][1]+" "\
+                +"Reported trait: "+reported_traits[0][1]
 
                 study_document['description'] = description
 
@@ -835,8 +909,6 @@ if __name__ == '__main__':
     '''
     Create Solr documents for categories of interest.
     '''
-    global DATABASE_NAME
-
 
     # Commandline arguments
     parser = argparse.ArgumentParser()
@@ -844,37 +916,39 @@ if __name__ == '__main__':
                         help='Run as (default: SPOTREL).')
     parser.add_argument('--limit', type=int, help='Limit the nuber of document to this number for testing purposes.')
     parser.add_argument('--data_type', default='publication',
-                        choices=['publication', 'study', 'trait', 'variant', 'gene', 'all'],
+                        choices=['publication', 'trait', 'variant', 'all'],
                         help='Run as (default: publication).')
-    
     args = parser.parse_args()
+
+    global DATABASE_NAME
     DATABASE_NAME = args.database
     limit = args.limit
 
     # Docfile suffix
-    now = datetime.datetime.now()
-    docfileSuffix = now.strftime("%Y.%m.%d-%H.%M")
+    # now = datetime.datetime.now()
+    # docfileSuffix = now.strftime("%Y.%m.%d-%H.%M")
 
     # Initialize database connection
     db_object = DBConnection.gwasCatalogDbConnector(DATABASE_NAME)
 
     # select function
     dispatcher = {
-        'publication' : get_publicaton_data, 
-        'study' : get_study_data, 
+        'publication' : get_publication_data, 
+        # 'study' : get_study_data,
         'trait' : get_trait_data, 
         'variant' : get_variant_data, 
-        'gene' : get_gene_data
+        # 'gene' : get_gene_data
     }
 
     # Get the list of document types to create
-    docTypes = [args.data_type]
-    if args.data_type == 'all': docTypes = ['publication', 'study', 'trait', 'variant', 'gene']
+    document_types = [args.data_type]
+    if args.data_type == 'all': document_types = ['publication', 'trait', 'variant']
 
     # Loop through all the document types and generate document
-    for docType in docTypes:
-        document_data = dispatcher[docType](db_object.connection, limit)
-        save_data(document_data, docfileSuffix)
+    for doc_type in document_types:
+        document_data = dispatcher[doc_type](db_object.connection, limit)
+        # save_data(document_data, docfileSuffix)
+        save_data(document_data)
 
     # Close database connection
     db_object.close()
