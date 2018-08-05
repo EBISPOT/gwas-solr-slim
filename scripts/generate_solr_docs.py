@@ -15,6 +15,7 @@ from ols import OLSData
 from document_types import publication
 from document_types import trait
 from document_types import study
+from document_types import Variant
 
 
 def publication_data(connection, limit=0):
