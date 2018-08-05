@@ -139,6 +139,7 @@
   <!-- <field name="ancestralGroups" type="text_general" indexed="true" stored="true" multiValued="false" /> -->
   <field name="parentDocument_accessionId" type="text_general" indexed="true" stored="true" multiValued="true" />
   <field name="parentDocument_ancestralGroups" type="text_general" indexed="true" stored="true" multiValued="true" />
+  <field name='genotypingTechnologies' type="text_general" indexed="true" stored="true" multiValued="true" />
 
 
   <!-- specific fields for Study -->
@@ -275,6 +276,7 @@
     <copyField source="ancestralGroups" dest="text"/> -->
     <copyField source="parentDocument_accessionId" dest="text"/>
     <copyField source="parentDocument_ancestralGroups" dest="text"/>
+    <copyField source="genotypingTechnologies" dest="text" />
     
       
     <!-- <copyField source="orcid" dest="text" /> --> 

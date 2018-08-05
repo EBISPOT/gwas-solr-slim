@@ -53,6 +53,7 @@ def get_publication_data(connection, limit=0):
             and P.PUBMED_ID= :pubmed_id
     """
 
+    # Study related queries
     study_ancestral_groups_sql = """
         SELECT  x.ID, listagg(x.ANCESTRAL_GROUP, ', ') WITHIN GROUP (ORDER BY x.ANCESTRAL_GROUP)
         FROM (
@@ -63,6 +64,18 @@ def get_publication_data(connection, limit=0):
             ) x
         GROUP BY x.ID
     """
+
+    study_genotyping_technology_sql = """
+        SELECT  x.ID, listagg(x.GENOTYPING_TECHNOLOGY, ', ') WITHIN GROUP (ORDER BY x.GENOTYPING_TECHNOLOGY) 
+        FROM (
+            SELECT DISTINCT S.ID, GT.GENOTYPING_TECHNOLOGY 
+            FROM STUDY S, STUDY_GENOTYPING_TECHNOLOGY SGT, GENOTYPING_TECHNOLOGY GT 
+            WHERE S.ID=SGT.STUDY_ID and SGT.GENOTYPING_TECHNOLOGY_ID=GT.ID 
+                and S.ID= :study_id
+            ) x 
+        GROUP BY x.ID
+    """
+
 
     all_publication_data = []
 
@@ -163,14 +176,16 @@ def get_publication_data(connection, limit=0):
                 r = cursor.execute(None, {'pubmed_id': publication[1]})
                 studies = cursor.fetchall()
 
-                # TEMP FIX
+                # TEMP FIX - Add Study information to Publication document
                 study_list = []
                 for study in studies:
                     study_list.append(study[1])
                     publication_document['parentDocument_accessionId'] = study_list
+
                
                
-                # TEMP FIX
+                # TEMP FIX - Add Study information to Publication document
+                all_genotyping_technologies = []
                 all_ancestral_groups = []
                 # For each study, get the Ancestral Groups
                 # child_docs = []
@@ -179,6 +194,24 @@ def get_publication_data(connection, limit=0):
                     # study_doc['content_type'] = 'childDocument'
                     # study_doc['id'] = "study"+":"+str(study[0])
                     # study_doc['accessionId'] = study[1]
+
+
+                    #############################
+                    # Get Genotyping Technology 
+                    #############################
+                    # study_genotyping_technologies = []
+                    cursor.prepare(study_genotyping_technology_sql)
+                    r = cursor.execute(None, {'study_id': study[0]})
+                    genotyping_technologies = cursor.fetchall()
+
+                    if not genotyping_technologies:
+                        gt_technologies = 'NA'
+                    else:
+                        gt_technologies = genotyping_technologies[0][1]
+                    
+                    # Add only distinct values to the all_genotyping_technologies list
+                    if gt_technologies not in all_genotyping_technologies:
+                        all_genotyping_technologies.append(gt_technologies)
                     
 
                     #######################
@@ -207,6 +240,7 @@ def get_publication_data(connection, limit=0):
                 # publication_document['_childDocuments_'] = child_docs
                 # publication_document['content_type'] = 'parentDocument'
                 publication_document['parentDocument_ancestralGroups'] = all_ancestral_groups
+                publication_document['genotypingTechnologies'] = all_genotyping_technologies
 
 
 
