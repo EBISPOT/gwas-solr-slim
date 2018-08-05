@@ -47,7 +47,7 @@ def get_publication_data(connection, limit=0):
     """
 
     publication_study_sql = """
-        SELECT S.ID, S.ACCESSION_ID 
+        SELECT S.ID, S.ACCESSION_ID, S.FULL_PVALUE_SET 
         FROM STUDY S, PUBLICATION P 
         WHERE S.PUBLICATION_ID = P.ID 
             and P.PUBMED_ID= :pubmed_id
@@ -176,11 +176,19 @@ def get_publication_data(connection, limit=0):
                 r = cursor.execute(None, {'pubmed_id': publication[1]})
                 studies = cursor.fetchall()
 
-                # TEMP FIX - Add Study information to Publication document
+                # TEMP FIX - Add Study and FullPValue information to Publication document
                 study_list = []
+                full_pvalue = False
                 for study in studies:
                     study_list.append(study[1])
                     publication_document['parentDocument_accessionId'] = study_list
+
+                    # If any Study for the Publication includes Summary Stats, 
+                    # mark the Publication as having Summary Stats for Search results. 
+                    # Users will identify individual studies with summary stats on dedicated pages.
+                    if study[2]:
+                        full_pvalue = True
+                    publication_document['fullPvalueSet'] = full_pvalue
 
                
                

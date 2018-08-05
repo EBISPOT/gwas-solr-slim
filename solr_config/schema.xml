@@ -140,13 +140,14 @@
   <field name="parentDocument_accessionId" type="text_general" indexed="true" stored="true" multiValued="true" />
   <field name="parentDocument_ancestralGroups" type="text_general" indexed="true" stored="true" multiValued="true" />
   <field name='genotypingTechnologies' type="text_general" indexed="true" stored="true" multiValued="true" />
+  <field name="fullPvalueSet" type="boolean" indexed="true" stored="true" multiValued="false" />
 
 
   <!-- specific fields for Study -->
   <!-- <field name="accessionId" type="string" indexed="true" stored="true" multiValued="false" />
   <field name="ancestralGroups" type="text_general" indexed="true" stored="true" multiValued="true" /> -->
   <field name="platform" type="string" indexed="true" stored="true" multiValued="false" />
-  <field name="fullPvalueSet" type="boolean" indexed="true" stored="true" multiValued="false" />
+  <!-- <field name="fullPvalueSet" type="boolean" indexed="true" stored="true" multiValued="false" /> -->
 
 
   <!-- specific fields for Trait -->
