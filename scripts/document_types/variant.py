@@ -1,7 +1,76 @@
 
 import pandas as pd
+from tqdm import tqdm
 
-class Variant(object):
+def get_variant_data(connection, limit=0):
+    '''
+    Get Variant data for Solr document.
+    '''
+
+    # function to retrieve further data from the database:
+    def get_more_variant_data(row):
+        # Extracting basic variant information:
+        resourcename = 'variant'
+        ID = row['ID']
+        rsID = row['RS_ID']
+        consequence = row['FUNCTIONAL_CLASS']
+
+        # Extracting genomic location:
+        location = variant_cls.get_variant_location(ID)
+
+        # Extracting mapped genes:
+        mapped_genes_list = variant_cls.get_mapped_genes(ID)
+        
+        mapped_genes_names = [x.split("|")[0] for x in mapped_genes_list]
+
+        # Extracting association count:
+        associations = variant_cls.get_association_count(ID)
+        
+        # Combining data into a dictionary:
+        varDoc = {
+            'resourcename' : resourcename,
+            'id' : "%s-%s" % (resourcename,ID),
+            'title' : rsID,
+            'rsID' : rsID,
+            'associationCount' : associations,
+            'mappedGenes' : mapped_genes_list,
+            'chromosomeName' : location['chromosome'],
+            'chromosomePosition' : location['position'],
+            'region' : location['region'],
+            'consequence' : consequence,
+            'link' : 'variants/rs7329174'
+
+        }
+        varDoc['description'] =  '%s:%s, %s, %s, mapped to: %s, associaitons: %s' %(
+                    varDoc['chromosomeName'], varDoc['chromosomePosition'], varDoc['region'], varDoc['consequence'],
+                    ",".join(mapped_genes_names),varDoc['associationCount']
+                )
+
+        # Adding to document list:
+        all_variant_data.append(varDoc)
+
+    # Initialize empty list for the documents:
+    all_variant_data = []
+
+    # Step 1: initialize variant object:
+    variant_cls = variant_sqls(connection)
+
+    # Step 2: retrieve all the variants in the database:
+    variants_df = variant_cls.get_snps()
+
+    # Inintialize progress bar:
+    tqdm.pandas(desc="Returning variant data")
+
+    # Step 3: Calling apply to retrieve all variant data:
+    if limit != 0:
+        variants_df[1:limit].progress_apply(get_more_variant_data, axis = 1)
+    else:
+        variants_df.progress_apply(get_more_variant_data, axis = 1)
+
+    return all_variant_data
+
+
+class variant_sqls(object):
     '''
     Retrieve Variant data. 
     '''
@@ -46,7 +115,6 @@ class Variant(object):
 
     def __init__(self, connection):
         self.connection = connection
-
 
         # We extract the mapping table:
         gene_map_df = pd.read_sql(self.ensembl_entr_ID_map_sql, self.connection)
