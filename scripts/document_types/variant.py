@@ -41,7 +41,7 @@ def get_variant_data(connection, limit=0):
             'link' : 'variants/rs7329174'
 
         }
-        varDoc['description'] =  '%s:%s, %s, %s, mapped to: %s, associaitons: %s' %(
+        varDoc['description'] =  '%s:%s, %s, %s, mapped to: %s, associations: %s' %(
                     varDoc['chromosomeName'], varDoc['chromosomePosition'], varDoc['region'], varDoc['consequence'],
                     ",".join(mapped_genes_names),varDoc['associationCount']
                 )
