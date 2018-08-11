@@ -5,4 +5,5 @@
 *.sh
 *.properties
 *.json
+lsf_logs/
 

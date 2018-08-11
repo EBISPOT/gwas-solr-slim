@@ -175,6 +175,8 @@
   <field name="region" type="text_general" indexed="true" stored="true" multiValued="false" />
   <field name="mappedGenes" type="string" indexed="true" stored="true" multiValued="true" />
   <field name="rsID" type="text_general" indexed="true" stored="true" multiValued="false" />
+  <field name="current_rsID" type="text_general" indexed="true" stored="true" multiValued="false" />
+  <field name="merged_rsID" type="text_general" indexed="true" stored="true" multiValued="false" />
 
   <!-- specific fields for Gene -->
   <!-- <field name="reported_trait" type="text_general" indexed="true" stored="true" multiValued="false" /> -->
@@ -294,7 +296,9 @@
     <copyField source="rsID" dest="text" />
     <copyField source="mappedGenes" dest="text"  />
     <copyField source="region" dest="text" />
-
+    <copyField source="current_rsID" dest="text" />
+    <copyField source="merged_rsID" dest="text" />
+    
     <!-- Copy fields from study documents -->
     <copyField source="reportedTrait_s" dest="text" />
     <copyField source="mappedTrait" dest="text" />
