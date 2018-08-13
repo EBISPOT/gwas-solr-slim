@@ -141,10 +141,10 @@ def variant_test(fatHost, identifiers):
     failed_identifiers = {}
 
     for rsID in tqdm(identifiers, desc='Testing variants... '):
-        # We have to skip the special rsID which is a dash... what a shitty database...
-        if rsID == '-': continue 
+        
+        if rsID == '-': continue # We have to skip the special rsID which is a dash... what an amazingly maintained, clean database...
 
-        rsID = quote(quote(rsID, safe=''), safe = '')
+        rsID = quote(quote(rsID, safe=''), safe = '') # special characters in the rsIDs have to escaped eg chr12:29387489
         URL = ('%s/select?wt=json&rows=1000&start=0&fq=resourcename%%3Aassociation&sort=pValueExponent+asc%%2C+pValueMantissa+asc&q=rsId%%3A%s' %(fatHost,rsID))
         r = requests.get(URL)
 
@@ -171,6 +171,17 @@ def get_doc_count(slimhost,resourcename):
     data = r.json()
     count = data['response']['numFound']
     return(count)
+
+def check_solr_server(solrHost):
+    URL = ("%s/admin/ping?wt=json" % solrHost)
+    try:
+        r = requests.get(URL)
+        if not r.status_code == 200:
+            return(r.text)
+        data = r.json()
+        return(data['status'])
+    except:
+        return("[Error] Request sent to %s was failed." % solrHost)
 
 def delete_documents(slimhost,resourcename,field,failed_identifiers):
     
@@ -200,12 +211,12 @@ if __name__ == '__main__':
     '''
 
     # Commandline arguments
-    parser = argparse.ArgumentParser()
-    parser.add_argument('--slim', help='Address of the slim solr server (default: http://garfield.ebi.ac.uk:8983/solr/gwas_slim).', default = 'http://garfield.ebi.ac.uk:8983/solr/gwas_slim')
-    parser.add_argument('--fat', help='Address of the fat solr server (default: http://garfield.ebi.ac.uk:8983/solr/gwas )', default = 'http://garfield.ebi.ac.uk:8983/solr/gwas')
+    parser = argparse.ArgumentParser(description='This script tests slim solr data against fat solr of a given document type. If a documents that were not found in the fat solr are removed from the slim index.')
+    parser.add_argument('--slim', help='Address of the slim solr server.')
+    parser.add_argument('--fat', help='Address of the fat solr server')
     parser.add_argument('--document', default='publication', choices=['publication', 'trait', 'variant', 'all'],
                         help='The document type to be checked (default: publication).')
-    parser.add_argument('--limit', help='Limit the number of items to test.', type = int, default = 0)
+    parser.add_argument('--limit', help='For debugging purposes! Testing only the first # document.', type = int, default = 0)
     args = parser.parse_args()
 
     # Get the list of document types to create
@@ -217,7 +228,13 @@ if __name__ == '__main__':
     fatHost = args.fat
     limit = args.limit
 
-    # At this point we don't check if the hosts are accessible or not.
+    # Checking if solr servers are up and running:
+    for solrHost in [slimHost, fatHost]:
+        solrStatus = check_solr_server(solrHost)
+        if solrStatus == 'OK':
+            print('[Info] %s is up and running.' % solrHost)
+        else:
+            print('[Info] %s has failed with the follwing message:\n%s' % (solrHost, solrStatus))
 
     # select function
     dispatcher = {
@@ -245,9 +262,3 @@ if __name__ == '__main__':
         else:
             print ("[Info] %s documents look good." % doc)
 
-     
-
-## Extracting all the data from the fat solr:
-# http://garfield.ebi.ac.uk:8983/solr/gwas/select?wt=json&q=*&resourcename=study&fl=pubmedId%2CrsId%2CshortForm%2Cassociation_rsId&rows=20
-# We need to create lists from all the document types. pmids, efo, variant.
-# Compare in both direction
