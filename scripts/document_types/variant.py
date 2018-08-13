@@ -15,36 +15,59 @@ def get_variant_data(connection, limit=0):
         rsID = row['RS_ID']
         consequence = row['FUNCTIONAL_CLASS']
 
+        # Extracting association count:
+        associations = variant_cls.get_association_count(ID)
+
+        # We don't care about variants that have no associations:
+        if associations == 0: 
+            return(0)
+
         # Extracting genomic location:
         location = variant_cls.get_variant_location(ID)
 
         # Extracting mapped genes:
         mapped_genes_list = variant_cls.get_mapped_genes(ID)
-        
         mapped_genes_names = [x.split("|")[0] for x in mapped_genes_list]
 
-        # Extracting association count:
-        associations = variant_cls.get_association_count(ID)
+        # Extracting merged rsID:
+        current_rsID = variant_cls.get_current_rsID(ID)
+
+        # Assign merged RsID and generate title:
+        title = ''
+        if current_rsID:
+            merged_rsID = rsID
+            title = "%s (%s)" %(current_rsID, merged_rsID)
+        else: 
+            current_rsID = rsID
+            merged_rsID = ''
+            title = current_rsID
         
         # Combining data into a dictionary:
         varDoc = {
             'resourcename' : resourcename,
             'id' : "%s-%s" % (resourcename,ID),
-            'title' : rsID,
+            'title' : title,
             'rsID' : rsID,
+            'current_rsID' : current_rsID,
+            'merged_rsID' : merged_rsID,
             'associationCount' : associations,
             'mappedGenes' : mapped_genes_list,
             'chromosomeName' : location['chromosome'],
             'chromosomePosition' : location['position'],
             'region' : location['region'],
             'consequence' : consequence,
-            'link' : 'variants/rs7329174'
-
+            'link' : 'variants/%s' % rsID
         }
-        varDoc['description'] =  '%s:%s, %s, %s, mapped to: %s, associations: %s' %(
+
+        # Adding description to the document:
+        description = ''
+        if not location['region'] == 'NA':
+            description = '%s:%s, %s, %s, mapped to: %s, associations: %s' %(
                     varDoc['chromosomeName'], varDoc['chromosomePosition'], varDoc['region'], varDoc['consequence'],
-                    ",".join(mapped_genes_names),varDoc['associationCount']
-                )
+                    ",".join(mapped_genes_names),varDoc['associationCount'] )
+        else:
+            description = 'This variant could not be mapped to the human genome. Associations: %s' % varDoc['associationCount']
+        varDoc['description'] =  description
 
         # Adding to document list:
         all_variant_data.append(varDoc)
@@ -85,6 +108,12 @@ class variant_sqls(object):
         FROM LOCATION L, SNP_LOCATION SL, SINGLE_NUCLEOTIDE_POLYMORPHISM SNP, REGION R
         WHERE L.ID = SL.LOCATION_ID and SL.SNP_ID = SNP.ID and L.REGION_ID = R.ID
             and length(l.CHROMOSOME_NAME) < 3 and SNP.ID = :snp_id
+    """
+
+    merged_snp_sql = """
+        SELECT SNP.RS_ID
+        FROM SNP_MERGED_SNP SMS, SINGLE_NUCLEOTIDE_POLYMORPHISM SNP
+        WHERE SMS.SNP_ID_MERGED = :snp_id AND SNP.ID = SMS.SNP_ID_CURRENT
     """
 
     genomic_context_sql = """
@@ -141,6 +170,13 @@ class variant_sqls(object):
         if len(df) > 0:
             assoc_count = df.COUNT.tolist()[0]
         return(assoc_count)
+
+    def get_current_rsID(self, variant_id):
+        currentrsID = ''
+        df = pd.read_sql(self.merged_snp_sql, self.connection, params = {'snp_id': variant_id})
+        if len(df) > 0:
+            currentrsID = df.RS_ID.tolist()[0]
+        return(currentrsID)
 
     def get_mapped_genes(self, variant_id):
 

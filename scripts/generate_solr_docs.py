@@ -29,6 +29,22 @@ def trait_data(connection, limit=0):
 def study_data(connection, limit=0):
     return study.get_study_data(connection)
 
+def check_data(data):
+    '''
+    This function checks if all the required fields of the documents are present.
+    Input is the list with all the documents.
+    If any of the required field is missing from the document, it will be deleted.
+    '''
+
+    requireFields = ['id', 'title', 'description', 'resourcename']
+
+    for i, doc in reversed(list(enumerate(data))):
+        for field in requireFields:
+            if not field in doc:
+                print("[Warning] %s is missing from %s document." % (field, doc['id']))
+                data.pop(i)
+                break
+    return(data)
 
 # def save_data(data, docfileSuffix, data_type=None):
 def save_data(data, data_type=None):
@@ -36,24 +52,6 @@ def save_data(data, data_type=None):
     data: list of solr ducments as dictionaries
         dictionaries have to contain the resourcename key.
     '''
-
-    ##
-    ## In the future, we can include a test here to make sure that the documents 
-    ## contain all the type specific fields.
-    ## Now we are only checking the common ones
-    ##
-
-    # TODO: Move to a different data QA script
-    # requireFields = {
-    #     'required' : ['id', 'title', 'description', 'resourcename'],
-    #     'variant' : ['associationCount','chromosomeName', 'chromosomePosition', 'mappedGenes', 'region', 'rsID', 'consequence']
-    # }
-
-    # # Testing if documents have the required fields:
-    # for field in requireFields['required']:
-    #     if not field in data[0].keys():
-    #         sys.exit("[ERROR] The provided data does has not %s field. Exiting." % field)
-
 
     resourcename = data[0]['resourcename']
 
@@ -295,6 +293,7 @@ if __name__ == '__main__':
     # Loop through all the document types and generate document
     for doc in documents:
         document_data = dispatcher[doc](db_object.connection, limit)
+        document_data = check_data(document_data)
         # save_data(document_data, docfileSuffix)
         save_data(document_data)
 
