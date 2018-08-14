@@ -300,7 +300,7 @@
     <copyField source="merged_rsID" dest="text" />
     
     <!-- Copy fields from study documents -->
-    <copyField source="reportedTrait_s" dest="text" />
+    <copyField source="reportedTrait" dest="text" />
     <copyField source="mappedTrait" dest="text" />
 
     <!-- Copy fields from trait documents -->

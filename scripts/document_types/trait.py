@@ -23,14 +23,12 @@ def get_trait_data(connection, limit=0):
         GROUP BY ET.ID, ET.TRAIT, 'trait', ET.URI, ET.SHORT_FORM
     """
 
-    reported_trait_sql = """
-        SELECT listagg(REPORTED_DISEASE_TRAIT, ', ') WITHIN GROUP (ORDER BY REPORTED_DISEASE_TRAIT)
-        FROM ( 
-            SELECT DISTINCT DT.TRAIT AS REPORTED_DISEASE_TRAIT 
-            FROM STUDY S, EFO_TRAIT ET, DISEASE_TRAIT DT, STUDY_EFO_TRAIT SETR, STUDY_DISEASE_TRAIT SDT 
-            WHERE S.ID=SETR.STUDY_ID and SETR.EFO_TRAIT_ID=ET.ID 
-            and S.ID=SDT.STUDY_ID and SDT.DISEASE_TRAIT_ID=DT.ID 
-            and ET.ID= :trait_id)
+    reported_trait_sql = """ 
+        SELECT DISTINCT DT.TRAIT AS REPORTED_DISEASE_TRAIT 
+        FROM STUDY S, EFO_TRAIT ET, DISEASE_TRAIT DT, STUDY_EFO_TRAIT SETR, STUDY_DISEASE_TRAIT SDT 
+        WHERE S.ID=SETR.STUDY_ID and SETR.EFO_TRAIT_ID=ET.ID 
+        and S.ID=SDT.STUDY_ID and SDT.DISEASE_TRAIT_ID=DT.ID 
+        and ET.ID= :trait_id
     """
 
     trait_association_cnt_sql = """
@@ -87,11 +85,15 @@ def get_trait_data(connection, limit=0):
                 r = cursor.execute(None, {'trait_id': mapped_trait[0]})
                 all_reported_traits = cursor.fetchall()
 
-                # add reported trait as string
-                mapped_trait_document['reportedTrait_s'] = all_reported_traits[0][0]
-
                 # add reported trait as list
-                mapped_trait_document['reportedTrait'] = [all_reported_traits[0][0]]
+                reported_trait_list = []
+                for trait in all_reported_traits:
+                    reported_trait_list.append(trait[0])
+                mapped_trait_document['reportedTrait'] = reported_trait_list
+
+                # add reported trait as a string
+                reported_trait_s = ', '.join(reported_trait_list)
+                mapped_trait_document['reportedTrait_s'] = reported_trait_s
 
                 
                 #######################################
