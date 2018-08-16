@@ -11,7 +11,7 @@ from ols import OLSData
 
 def get_trait_data(connection, limit=0):
     '''
-    Given each EFO trait, get all Reported trait information.
+    Given each Mapped EFO trait, get all Reported trait information.
     '''
     
     # Only select EFOs that are already assigned to Studies
@@ -38,23 +38,9 @@ def get_trait_data(connection, limit=0):
               AND ET.ID= :trait_id
     """
 
-
     all_trait_data = []
 
-    trait_attr_list = ['id', 'mappedTrait', 'mappedUri', 'studyCount', \
-        'resourcename', 'reportedTrait_s', 'reportedTrait', 'associationCount', \
-        'shortForm', 'synonyms', 'parent']
-
-        # 'shortform_autosuggest', 'label_autosuggest', 'label_autosuggest_ws', \
-        # 'label_autosuggest_e', 'synonym_autosuggest', 'synonym_autosuggest_ws', \
-        # 'synonym_autosuggest_e'
-
     try:
-        # ip, port, sid, username, password = gwas_data_sources.get_db_properties(DATABASE_NAME)
-        # dsn_tns = cx_Oracle.makedsn(ip, port, sid)
-        # connection = cx_Oracle.connect(username, password, dsn_tns)
-
-
         with contextlib.closing(connection.cursor()) as cursor:
             cursor.execute(efo_sql)
             mapped_trait_data = cursor.fetchall()
@@ -118,22 +104,19 @@ def get_trait_data(connection, limit=0):
 
 
                 if not ols_term_data['iri'] == None:
-                    mapped_uri = [ols_term_data['iri'].encode('utf-8')]
+                    # Not used in Solr document yet
+                    # mapped_uri = [ols_term_data['iri'].encode('utf-8')]
 
-                    # use this or from db? note is entered manually into db
-                    short_form = [ols_term_data['short_form'].encode('utf-8')]
-                    mapped_trait_document['shortForm'] = short_form
+                    # Not all EFO terms will be in OLS when the Solr data 
+                    # is generated so use the shortForm from the database
+                    mapped_trait_document['shortForm'] = mapped_trait[5]
 
-                    # use this or from db? note is entered manually into db
-                    label = [ols_term_data['label'].encode('utf-8')]
+                    mapped_trait_document['title'] = mapped_trait[1]
 
-                    # Create title field, use this or from db? note is entered manually into db
-                    mapped_trait_document['title'] = ols_term_data['label']+" ("+ols_term_data['short_form']+")"
 
                     #######################
                     # Create description
                     ######################
-                    # Trait description, number of studies, number of associations.
                     term_description = ""
                     if not ols_term_data['description'] == None:
                         term_description = ''.join(ols_term_data['description'])
@@ -163,10 +146,9 @@ def get_trait_data(connection, limit=0):
                         mapped_trait_document['parent'] = ancestor_terms
 
                 else:
-                    # # add placeholder data
-                    # for item in range(4):
-                    #     mapped_trait.append(None)
-                    pass
+                    # TODO: Handle cases when term is not
+                    # in EFO submitted to OLS
+                   pass
 
 
                 ############################################
@@ -174,10 +156,8 @@ def get_trait_data(connection, limit=0):
                 ############################################
                 all_trait_data.append(mapped_trait_document)
 
-
-        # connection.close()
-
         return all_trait_data
+
 
     except cx_Oracle.DatabaseError, exception:
         print exception
