@@ -121,6 +121,7 @@ def get_trait_data(connection, limit=0):
                     if not ols_term_data['description'] == None:
                         term_description = ''.join(ols_term_data['description'])
                     else:
+                        # handle terms that do not have a term definition
                         term_description = "NA"
 
                     mapped_trait_document['description'] = term_description+", associations: "+\
@@ -147,8 +148,14 @@ def get_trait_data(connection, limit=0):
 
                 else:
                     # TODO: Handle cases when term is not
-                    # in EFO submitted to OLS
-                   pass
+                    # yet in published EFO submitted to OLS
+                    
+                    # add description since this is a required field for the Solr documents
+                    term_description = "NA"
+
+                    mapped_trait_document['description'] = term_description+", associations: "+\
+                    str(mapped_trait_document['associationCount'])+", studies: "+str(mapped_trait_document['studyCount'])
+                    print "** Trait: ", mapped_trait[5]
 
 
                 ############################################
