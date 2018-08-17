@@ -57,6 +57,9 @@ def get_trait_data(connection, limit=0):
                 mapped_trait_document['efoLink'] = [mapped_trait[1]+"|"+\
                     mapped_trait[5]+"|"+mapped_trait[2]]
 
+                mapped_trait_document['shortForm'] = [mapped_trait[5]]
+                mapped_trait_document['title'] = mapped_trait[1]
+
                 # Add Autosuggest fields
                 mapped_trait_document['shortform_autosuggest'] = [mapped_trait[5]]
                 mapped_trait_document['label_autosuggest'] = [mapped_trait[1]]
@@ -109,9 +112,6 @@ def get_trait_data(connection, limit=0):
 
                     # Not all EFO terms will be in OLS when the Solr data 
                     # is generated so use the shortForm from the database
-                    mapped_trait_document['shortForm'] = mapped_trait[5]
-
-                    mapped_trait_document['title'] = mapped_trait[1]
 
 
                     #######################
