@@ -155,7 +155,7 @@ def get_trait_data(connection, limit=0):
 
                     mapped_trait_document['description'] = term_description+", associations: "+\
                     str(mapped_trait_document['associationCount'])+", studies: "+str(mapped_trait_document['studyCount'])
-                    print "** Trait: ", mapped_trait[5]
+                    
 
 
                 ############################################
