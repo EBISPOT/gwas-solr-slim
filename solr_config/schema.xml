@@ -316,6 +316,7 @@
     <copyField source="synonyms" dest="synonym_autosuggest_e" />;
 
     <copyField source="shortForm" dest="shortform_autosuggest" />
+    <copyField source="shortForm" dest="text" />
 
 
     <field name="label_autosuggest_ws" type="textWhitespace" indexed="true" stored="true" multiValued="true" />
