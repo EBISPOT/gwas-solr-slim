@@ -258,9 +258,13 @@ def get_publication_data(connection, limit=0):
                 # The description field is formatted as:
                 # First author, year, journal, pmid, # studies, # associations.
                 year, month, day = publication[4].split("-")
+                
+                ## GOCI2359 - Removing association and study count from the description.
+                # description = author_data[0][0]+" et al. "+year+" "+publication[2]+" "\
+                # +"PMID:"+publication[1]+", studies: "+str(study_cnt[0])+", associations: "\
+                #+str(association_cnt[0])
                 description = author_data[0][0]+" et al. "+year+" "+publication[2]+" "\
-                +"PMID:"+publication[1]+", studies: "+str(study_cnt[0])+", associations: "\
-                +str(association_cnt[0])
+                +"PMID:"+publication[1]
 
                 publication_document['description'] = description
 
