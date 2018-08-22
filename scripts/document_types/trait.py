@@ -124,9 +124,7 @@ def get_trait_data(connection, limit=0):
                         # handle terms that do not have a term definition
                         term_description = "NA"
 
-                    mapped_trait_document['description'] = term_description+", associations: "+\
-                    str(mapped_trait_document['associationCount'])+", studies: "+str(mapped_trait_document['studyCount'])
-
+                    mapped_trait_document['description'] = term_description
 
                     # Add synonyms
                     if not ols_term_data['synonyms'] == None:
