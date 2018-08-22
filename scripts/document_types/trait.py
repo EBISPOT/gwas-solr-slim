@@ -123,9 +123,6 @@ def get_trait_data(connection, limit=0):
                     else:
                         term_description = "NA"
 
-                    ## GOCI2359 - Removing association and study count from the description.
-                    # mapped_trait_document['description'] = term_description+", associations: "+\
-                    # str(mapped_trait_document['associationCount'])+", studies: "+str(mapped_trait_document['studyCount'])
                     mapped_trait_document['description'] = term_description
 
                     # Add synonyms
