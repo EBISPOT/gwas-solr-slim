@@ -60,14 +60,9 @@ def get_variant_data(connection, limit=0):
         }
 
         # Adding description to the document:
-        description = ''
-        if not location['region'] == 'NA':
-            description = '%s:%s, %s, %s, mapped to: %s' %(
-                    varDoc['chromosomeName'], varDoc['chromosomePosition'], varDoc['region'], varDoc['consequence'],
-                    ",".join(mapped_genes_names))
-        else:
-            description = 'This variant could not be mapped to the human genome.'
-        varDoc['description'] =  description
+        coordinates = '%s:%s' %(varDoc['chromosomeName'], varDoc['chromosomePosition'])
+        varDoc['description'] =  "|".join([coordinates, 
+            varDoc['region'], varDoc['consequence'],",".join(mapped_genes_names)])
 
         # Adding to document list:
         all_variant_data.append(varDoc)
