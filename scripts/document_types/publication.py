@@ -251,7 +251,7 @@ def get_publication_data(connection, limit=0):
                 # Finally, add child_docs to publication document
                 # publication_document['_childDocuments_'] = child_docs
                 # publication_document['content_type'] = 'parentDocument'
-                publication_document['ancestralGroups'] = all_ancestral_groups
+                publication_document['parentDocument_ancestralGroups'] = all_ancestral_groups
                 publication_document['genotypingTechnologies'] = all_genotyping_technologies
 
 
