@@ -13,14 +13,14 @@ def get_variant_data(connection, limit=0):
         resourcename = 'variant'
         ID = row['ID']
         rsID = row['RS_ID']
-        consequence = row['FUNCTIONAL_CLASS']
+        consequence = str(row['FUNCTIONAL_CLASS']).title().replace("_", " ")
 
         # Extracting association count:
         associations = variant_cls.get_association_count(ID)
 
         # We don't care about variants that have no associations:
         if associations == 0: 
-            return(0)
+            return(1)
 
         # Extracting genomic location:
         location = variant_cls.get_variant_location(ID)
@@ -61,8 +61,9 @@ def get_variant_data(connection, limit=0):
 
         # Adding description to the document:
         coordinates = '%s:%s' %(varDoc['chromosomeName'], varDoc['chromosomePosition'])
+        genes_str = ",".join(mapped_genes_names)
         varDoc['description'] =  "|".join([coordinates, 
-            varDoc['region'], varDoc['consequence'],",".join(mapped_genes_names)])
+            str(varDoc['region']), consequence,genes_str])
 
         # Adding to document list:
         all_variant_data.append(varDoc)
@@ -160,7 +161,7 @@ class variant_sqls(object):
         return(location)
 
     def get_association_count(self, variant_id):
-        assoc_count = '0'
+        assoc_count = 0
         df = pd.read_sql(self.association_count_sql, self.connection, params = {'snp_id': variant_id})
         if len(df) > 0:
             assoc_count = df.COUNT.tolist()[0]
