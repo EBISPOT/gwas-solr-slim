@@ -5,6 +5,7 @@ import sys
 from tqdm import tqdm
 import json
 import os.path
+import pandas as pd
 
 # Custom modules
 # import DBConnection
@@ -76,6 +77,12 @@ def get_publication_data(connection, limit=0):
         GROUP BY x.ID
     """
 
+    country_of_recruitment_sql = """
+        SELECT DISTINCT (C.COUNTRY_NAME)
+        FROM STUDY S, ANCESTRY A, ANCESTRY_COUNTRY_RECRUITMENT ACR, COUNTRY C
+        WHERE S.PUBLICATION_ID = :publication_id AND A.STUDY_ID = S.ID AND A.ID = ACR.ANCESTRY_ID AND C.ID = ACR.COUNTRY_ID
+    """
+
 
     all_publication_data = []
 
@@ -83,14 +90,13 @@ def get_publication_data(connection, limit=0):
         'id', 'pmid', 'journal', 'title',
         'publicationDate', 'resourcename', 'author', 'author_s',
         'authorAscii', 'authorAscii_s', 'authorsList',
-        'associationCount', 'studyCount', 'description'
+        'associationCount', 'studyCount', 'description', 'countryOfRecruitment'
     ]
 
     try:
         # ip, port, sid, username, password = gwas_data_sources.get_db_properties(DATABASE_NAME)  # noqa
         # dsn_tns = cx_Oracle.makedsn(ip, port, sid)
         # connection = cx_Oracle.connect(username, password, dsn_tns)
-
         with contextlib.closing(connection.cursor()) as cursor:
 
             cursor.execute(publication_sql)
@@ -190,8 +196,12 @@ def get_publication_data(connection, limit=0):
                         full_pvalue = True
                     publication_document['fullPvalueSet'] = full_pvalue
 
-               
-               
+                ##########################################3
+                # Get a list of countries of recruitment
+                ##########################################3
+                df = pd.read_sql(country_of_recruitment_sql, connection, params = {'publication_id' : publication[0]})
+                publication_document['countryOfRecruitment'] = df.COUNTRY_NAME.tolist()
+
                 # TEMP FIX - Add Study information to Publication document
                 all_genotyping_technologies = []
                 all_ancestral_groups = []
@@ -237,12 +247,6 @@ def get_publication_data(connection, limit=0):
                     else:
                         study_ancestral_groups = [ancestral_groups[0][1]]
                         all_ancestral_groups.append(ancestral_groups[0][1])
-
-                    # Add ancestry information to study data
-                    # study_doc['ancestralGroups'] = study_ancestral_groups
-                    
-                    # Add to child document list
-                    # child_docs.append(study_doc)
 
                 # Finally, add child_docs to publication document
                 # publication_document['_childDocuments_'] = child_docs
