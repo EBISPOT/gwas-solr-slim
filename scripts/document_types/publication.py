@@ -5,7 +5,6 @@ import sys
 from tqdm import tqdm
 import json
 import os.path
-import pandas as pd
 
 # Custom modules
 # import DBConnection
@@ -101,9 +100,15 @@ def get_publication_data(connection, limit=0):
 
             cursor.execute(publication_sql)
             publication_data = cursor.fetchall()
+            counter = 0
 
             for publication in tqdm(publication_data, desc='Get Publication data'):  # noqa
                 publication = list(publication)
+                
+                # Limit the number of documents to 20
+                counter += 1
+                if counter == 20:
+                    break
 
                 publication_document = {}
 
@@ -199,9 +204,12 @@ def get_publication_data(connection, limit=0):
                 ##########################################3
                 # Get a list of countries of recruitment
                 ##########################################3
-                df = pd.read_sql(country_of_recruitment_sql, connection, params = {'publication_id' : publication[0]})
-                publication_document['countryOfRecruitment'] = df.COUNTRY_NAME.tolist()
-
+                
+                cursor.prepare(country_of_recruitment_sql)
+                r = cursor.execute(None, {'publication_id' : publication[0]})
+                country_of_recruitment = cursor.fetchall()
+                publication_document['countryOfRecruitment'] = [ x[0] for x in country_of_recruitment ]
+                
                 # TEMP FIX - Add Study information to Publication document
                 all_genotyping_technologies = []
                 all_ancestral_groups = []
