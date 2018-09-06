@@ -100,15 +100,9 @@ def get_publication_data(connection, limit=0):
 
             cursor.execute(publication_sql)
             publication_data = cursor.fetchall()
-            counter = 0
 
             for publication in tqdm(publication_data, desc='Get Publication data'):  # noqa
                 publication = list(publication)
-                
-                # Limit the number of documents to 20
-                counter += 1
-                if counter == 20:
-                    break
 
                 publication_document = {}
 
