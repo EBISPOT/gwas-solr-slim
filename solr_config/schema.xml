@@ -130,6 +130,7 @@
   <field name="authorAscii" type="text_general" indexed="true" stored="true" multiValued="true" />
   <field name="authorAscii_s" type="text_general" indexed="true" stored="true" multiValued="false" />
   <field name="authorsList" type="text_general" indexed="true" stored="true" multiValued="true" />
+  <field name="countryOfRecruitment" type="text_general" indexed="true" stored="true" multiValued="true" />
   <!-- <field name="orcid" type="string" indexed="true" stored="true" multiValued="false" /> -->
   <!-- <field name="last_modified" type="date" indexed="true" stored="true" /> -->
   <!-- <field name="studies" type="text_general" indexed="true" stored="true" multiValued="true" /> -->
@@ -280,7 +281,7 @@
     <copyField source="parentDocument_accessionId" dest="text"/>
     <copyField source="parentDocument_ancestralGroups" dest="text"/>
     <copyField source="genotypingTechnologies" dest="text" />
-    
+    <copyField source="countryOfRecruitment" dest="text" /> 
       
     <!-- <copyField source="orcid" dest="text" /> --> 
     <copyField source="journal" dest="text"  />
