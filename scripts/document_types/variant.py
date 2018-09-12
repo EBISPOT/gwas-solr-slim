@@ -13,14 +13,17 @@ def get_variant_data(connection, limit=0):
         resourcename = 'variant'
         ID = row['ID']
         rsID = row['RS_ID']
-        consequence = row['FUNCTIONAL_CLASS']
+        consequence = str(row['FUNCTIONAL_CLASS']).replace("_", " ").capitalize() 
 
         # Extracting association count:
-        associations = variant_cls.get_association_count(ID)
+        association_count = variant_cls.get_association_count(ID)
+
+        # Extracting study count:
+        study_count = variant_cls.get_study_count(ID)
 
         # We don't care about variants that have no associations:
-        if associations == 0: 
-            return(0)
+        if association_count == 0: 
+            return(1)
 
         # Extracting genomic location:
         location = variant_cls.get_variant_location(ID)
@@ -50,7 +53,8 @@ def get_variant_data(connection, limit=0):
             'rsID' : rsID,
             'current_rsID' : current_rsID,
             'merged_rsID' : merged_rsID,
-            'associationCount' : associations,
+            'associationCount' : association_count,
+            'studyCount' : study_count,
             'mappedGenes' : mapped_genes_list,
             'chromosomeName' : location['chromosome'],
             'chromosomePosition' : location['position'],
@@ -60,14 +64,10 @@ def get_variant_data(connection, limit=0):
         }
 
         # Adding description to the document:
-        description = ''
-        if not location['region'] == 'NA':
-            description = '%s:%s, %s, %s, mapped to: %s' %(
-                    varDoc['chromosomeName'], varDoc['chromosomePosition'], varDoc['region'], varDoc['consequence'],
-                    ",".join(mapped_genes_names))
-        else:
-            description = 'This variant could not be mapped to the human genome.'
-        varDoc['description'] =  description
+        coordinates = '%s:%s' %(varDoc['chromosomeName'], varDoc['chromosomePosition'])
+        genes_str = ",".join(mapped_genes_names)
+        varDoc['description'] =  "|".join([coordinates, 
+            str(varDoc['region']), consequence,genes_str])
 
         # Adding to document list:
         all_variant_data.append(varDoc)
@@ -130,6 +130,13 @@ class variant_sqls(object):
         group by asv.SNP_ID
     """
 
+    study_count_sql = """
+        SELECT COUNT(DISTINCT(A.STUDY_ID)) AS count
+        FROM ASSOCIATION_SNP_VIEW ASV, ASSOCIATION A
+        WHERE ASV.ASSOCIATION_ID = A.ID
+          AND ASV.SNP_ID = :snp_id
+    """
+
     ensembl_entr_ID_map_sql = """
         SELECT ENS.GENE_NAME as ENS_NAME, ENS.ENSEMBL_ID, ENTR.GENE_NAME as ENT_NAME, ENTR.ENTREZ_ID FROM
           (SELECT G.GENE_NAME as GENE_NAME, E.ENSEMBL_GENE_ID as ENSEMBL_ID
@@ -164,8 +171,15 @@ class variant_sqls(object):
 
         return(location)
 
+    def get_study_count(self, variant_id):
+        study_count = 0
+        df = pd.read_sql(self.study_count_sql, self.connection, params = {'snp_id': variant_id})
+        if len(df) > 0:
+            study_count = df.COUNT.tolist()[0]
+        return(study_count)
+
     def get_association_count(self, variant_id):
-        assoc_count = '0'
+        assoc_count = 0
         df = pd.read_sql(self.association_count_sql, self.connection, params = {'snp_id': variant_id})
         if len(df) > 0:
             assoc_count = df.COUNT.tolist()[0]
