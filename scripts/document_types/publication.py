@@ -79,7 +79,8 @@ def get_publication_data(connection, limit=0):
     country_of_recruitment_sql = """
         SELECT DISTINCT (C.COUNTRY_NAME)
         FROM STUDY S, ANCESTRY A, ANCESTRY_COUNTRY_RECRUITMENT ACR, COUNTRY C
-        WHERE S.PUBLICATION_ID = :publication_id AND A.STUDY_ID = S.ID AND A.ID = ACR.ANCESTRY_ID AND C.ID = ACR.COUNTRY_ID
+        WHERE S.ID=A.STUDY_ID and A.ID=ACR.ANCESTRY_ID and ACR.COUNTRY_ID=C.ID
+            and S.PUBLICATION_ID= :publication_id
     """
 
 
@@ -174,6 +175,15 @@ def get_publication_data(connection, limit=0):
                 publication_document[publication_attr_list[12]] = study_cnt[0]
 
 
+                ##########################################
+                # Get a list of countries of recruitment
+                ##########################################
+                cursor.prepare(country_of_recruitment_sql)
+                r = cursor.execute(None, {'publication_id' : publication[0]})
+                country_of_recruitment = cursor.fetchall()
+                publication_document['countryOfRecruitment'] = [ x[0] for x in country_of_recruitment ]  # noqa
+
+
                 #########################################
                 # Get List of Studies per Publication
                 #########################################
@@ -195,14 +205,6 @@ def get_publication_data(connection, limit=0):
                         full_pvalue = True
                     publication_document['fullPvalueSet'] = full_pvalue
 
-                ##########################################3
-                # Get a list of countries of recruitment
-                ##########################################3
-                
-                cursor.prepare(country_of_recruitment_sql)
-                r = cursor.execute(None, {'publication_id' : publication[0]})
-                country_of_recruitment = cursor.fetchall()
-                publication_document['countryOfRecruitment'] = [ x[0] for x in country_of_recruitment ]
                 
                 # TEMP FIX - Add Study information to Publication document
                 all_genotyping_technologies = []
