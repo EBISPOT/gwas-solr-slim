@@ -35,7 +35,7 @@ def get_variant_data(connection, limit=0):
         # Extracting merged rsID:
         current_rsID = variant_cls.get_current_rsID(ID)
 
-        # Assign merged RsID and generate title:
+        # Assign merged rsID and generate title:
         title = ''
         if current_rsID:
             merged_rsID = rsID
@@ -48,7 +48,7 @@ def get_variant_data(connection, limit=0):
         # Combining data into a dictionary:
         varDoc = {
             'resourcename' : resourcename,
-            'id' : "%s-%s" % (resourcename,ID),
+            'id' : "%s:%s" % (resourcename,ID),
             'title' : title,
             'rsID' : rsID,
             'current_rsID' : current_rsID,

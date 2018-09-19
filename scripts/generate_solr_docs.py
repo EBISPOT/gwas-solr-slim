@@ -29,21 +29,41 @@ def trait_data(connection, limit=0):
 def study_data(connection, limit=0):
     return study.get_study_data(connection)
 
-def check_data(data):
+def check_data(data, doctype):
     '''
     This function checks if all the required fields of the documents are present.
     Input is the list with all the documents.
     If any of the required field is missing from the document, it will be deleted.
     '''
 
+    # Check if the submitted data is a dictionary:
+    if not isinstance(data, list):
+        
+        # Report to standard output:
+        print("[Error] An error occured while generating the %s documents: the submitted data is not a list, but a %s!" % (doctype, type(data)))
+        print("[Error] The data looks like this:")
+        print(data)
+
+        # Exiting with reporting error:
+        sys.exit('[Error] %s data could not be saved. Exiting.!' % doctype)
+
+    # A minimal list of fields that need to be found in every documents:
     requireFields = ['id', 'title', 'description', 'resourcename']
 
     for i, doc in reversed(list(enumerate(data))):
         for field in requireFields:
             if not field in doc:
-                print("[Warning] %s is missing from %s document." % (field, doc['id']))
+                print("[Warning] %s is missing from document. Removing." % (field))
+                print('[Warning] The problematic document looks like this: ')
+                print(doc)
+
                 data.pop(i)
                 break
+
+    # Exit if there's no document left to save:
+    if len(data) == 0:
+        sys.exit('[Error] %s data could not be saved as no documents left. Exiting.' % doctype)
+
     return(data)
 
 # def save_data(data, docfileSuffix, data_type=None):
@@ -293,7 +313,7 @@ if __name__ == '__main__':
     # Loop through all the document types and generate document
     for doc in documents:
         document_data = dispatcher[doc](db_object.connection, limit)
-        document_data = check_data(document_data)
+        document_data = check_data(document_data, doc)
         # save_data(document_data, docfileSuffix)
         save_data(document_data)
 
