@@ -283,8 +283,8 @@
     <copyField source="genotypingTechnologies" dest="text" />
     <copyField source="countryOfRecruitment" dest="text" /> 
       
-    <!-- <copyField source="orcid" dest="text" /> --> 
-    <copyField source="journal" dest="text"  />
+    <!-- <copyField source="orcid" dest="text" /> -->
+    <!-- <copyField source="journal" dest="text"  /> -->
     <copyField source="authorsList" dest="text" />
     <copyField source="author" dest="text" />
 
