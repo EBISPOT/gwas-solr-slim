@@ -16,7 +16,7 @@ from document_types import publication
 from document_types import trait
 from document_types import study
 from document_types import variant
-
+from document_types import gene
 
 def publication_data(connection, limit=0):
     return publication.get_publication_data(connection)
@@ -91,6 +91,29 @@ def save_data(data, data_type=None):
 def variant_data(connection, limit=0):
     return variant.get_variant_data(connection, limit)
 
+def gene_data(connection, limit=0):
+    # Initialize gene object:
+    gene_obj = gene.GeneAnnotationParser()
+
+    # Extracting lookup table:
+    ID_lookup_table = gene_obj.get_ID_lookup_table()
+
+    # Opening variant document file:
+    variant_data_file = 'data/variant_data.json'
+    with open(variant_data_file) as f:
+        variant_data = json.load(f)
+
+    # Parsing variant document:
+    genes_extracted = gene.process_variant_document(variant_data, ID_lookup_table)
+
+    # Fetching annotation for those genes which has been mapped to variants:
+    mapped_gene_IDs = list(genes_extracted.keys())
+    gene_obj.fetch_Ensembl_annotations(mapped_gene_IDs)
+
+    # Generating documents:
+    gene_documents = gene_obj.create_document(genes_extracted)
+
+    return(gene_documents)
 
 def get_gene_data():
     '''
@@ -281,7 +304,7 @@ if __name__ == '__main__':
                         help='Run as (default: SPOTREL).')
     parser.add_argument('--limit', type=int, help='Limit the number of created documents to this number for testing purposes.')
     parser.add_argument('--document', default='publication',
-                        choices=['publication', 'trait', 'variant', 'all'],
+                        choices=['publication', 'trait', 'variant', 'gene', 'all'],
                         help='Run as (default: publication).')
     args = parser.parse_args()
 
@@ -303,12 +326,12 @@ if __name__ == '__main__':
         # 'study' : study_data,
         'trait' : trait_data, 
         'variant' : variant_data, 
-        # 'gene' : get_gene_data
+        'gene' : gene_data
     }
 
     # Get the list of document types to create
     documents = [args.document]
-    if args.document == 'all': documents = ['publication', 'trait', 'variant']
+    if args.document == 'all': documents = ['publication', 'trait', 'variant', 'gene']
 
     # Loop through all the document types and generate document
     for doc in documents:

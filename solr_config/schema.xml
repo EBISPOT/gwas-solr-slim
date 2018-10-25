@@ -180,18 +180,18 @@
   <field name="merged_rsID" type="text_general" indexed="true" stored="true" multiValued="false" />
 
   <!-- specific fields for Gene -->
-  <!-- <field name="reported_trait" type="text_general" indexed="true" stored="true" multiValued="false" /> -->
-  <field name="geneDescription" type="text_general" indexed="false" stored="true" multiValued="false" />
+  <field name="ensemblDescription" type="string" indexed="true" stored="true" multiValued="false" />
   <field name="ensemblID" type="string" indexed="true" stored="true" multiValued="false" />
-  <field name="geneName" type="string" indexed="true" stored="true" multiValued="false" />
-  <field name="synonymsGene" type="text_general" indexed="true" stored="true" multiValued="false" />  
+  <field name="cytoband" type="text_general" indexed="true" stored="true" multiValued="false" />  
   <field name="biotype" type="text_general" indexed="true" stored="true" multiValued="false" />
-  <field name="variants" type="string" indexed="true" stored="true" multiValued="true" />
+  <field name="rsIDs" type="string" indexed="true" stored="true" multiValued="true" />
+  <field name="entrez_id" type="text_general" indexed="false" stored="true" multiValued="false" />
+  <field name="synonymsGene" type="text_general" indexed="true" stored="true" multiValued="false" />
+  <field name="crossRefs" type="text_general" indexed="true" stored="true" multiValued="false" />
+  <field name="chromosome" type="text_general" indexed="true" stored="true" multiValued="false" />  
+  <field name="start" type="int" indexed="true" stored="true" multiValued="false" />
+  <field name="end" type="int" indexed="true" stored="true" multiValued="false" />
 
-  <field name="mapping" type="text_general" indexed="true" stored="true" multiValued="true" />  
-  <field name="mapping.chr" type="text_general" indexed="true" stored="true" multiValued="false" />  
-  <field name="mapping.start" type="int" indexed="true" stored="true" multiValued="false" />  
-  <field name="mapping.end" type="int" indexed="true" stored="true" multiValued="false" />  
 
     <!-- Main body of document extracted by SolrCell.
          NOTE: This field is not indexed by default, since it is also copied to "text"
@@ -290,9 +290,12 @@
 
     <!-- Copying fields from the gene documents -->
     <copyField source="ensemblID" dest="text" />
-    <copyField source="geneName" dest="text"  />
     <copyField source="synonymsGene" dest="text" />
-
+    <copyField source="cytoband" dest="text" />
+    <copyField source="synonyms" dest="text" />    
+    <copyField source="rsIDs" dest="text" />
+    <copyField source="crossRefs" dest="text" />
+    
     <!-- Copying fields from the variant documents -->
     <copyField source="rsID" dest="text" />
     <copyField source="mappedGenes" dest="text"  />
