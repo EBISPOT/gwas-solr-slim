@@ -10,8 +10,8 @@ from tqdm import tqdm
 
 import sys, os
 
+# Importing Ensembl REST class:
 sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'EnsemblREST'))
-
 from REST import REST
 
 # Looping through all variant in the data 

@@ -95,7 +95,7 @@ def gene_data(connection, limit=0):
     # Initialize gene object:
     gene_obj = gene.GeneAnnotationParser()
 
-    # Extracting lookup table:
+    # Extracting lookup table for synonyms:
     ID_lookup_table = gene_obj.get_ID_lookup_table()
 
     # Opening variant document file:
