@@ -31,6 +31,7 @@ def get_variant_data(connection, limit=0):
         # Extracting mapped genes:
         mapped_genes_list = variant_cls.get_mapped_genes(ID)
         mapped_genes_names = [x.split("|")[0] for x in mapped_genes_list]
+        mapped_genes_names = list(set(mapped_genes_names)) # GOCI-2475 - unique set of names are generated.
 
         # Extracting merged rsID:
         current_rsID = variant_cls.get_current_rsID(ID)
