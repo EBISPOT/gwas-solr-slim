@@ -17,14 +17,13 @@ from document_types import trait
 from document_types import study
 from document_types import variant
 from document_types import gene
+from document_types import gene_annotator
 
 def publication_data(connection, limit=0):
     return publication.get_publication_data(connection)
 
-
 def trait_data(connection, limit=0):
     return trait.get_trait_data(connection)
-
 
 def study_data(connection, limit=0):
     return study.get_study_data(connection)
@@ -92,28 +91,32 @@ def variant_data(connection, limit=0):
     return variant.get_variant_data(connection, limit)
 
 def gene_data(connection, limit=0):
-    # Initialize gene object:
-    gene_obj = gene.GeneAnnotationParser()
 
-    # Extracting lookup table for synonyms:
-    ID_lookup_table = gene_obj.get_ID_lookup_table()
+    # Importing shell variables:
+    try:
+        HGNC_file = os.environ["HGNC_file"]
+    except:
+        raise(ValueError("[Error] \"HGNC_file\" shell variable is not defined."))
 
-    # Opening variant document file:
-    variant_data_file = 'data/variant_data.json'
-    with open(variant_data_file) as f:
-        variant_data = json.load(f)
+    try:
+        EnsemblFtpPath = os.environ["EnsemblFtpPath"]
+    except:
+        raise(ValueError("[Error] \"EnsemblFtpPath\" shell variable is not defined."))
 
-    # Parsing variant document:
-    genes_extracted = gene.process_variant_document(variant_data, ID_lookup_table)
-
-    # Fetching annotation for those genes which has been mapped to variants:
-    mapped_gene_IDs = list(genes_extracted.keys())
-    gene_obj.fetch_Ensembl_annotations(mapped_gene_IDs)
+    # Extract gene/mapping data from database:
+    geneSQL = gene.gene_sql(connection=connection,test=True)
+    mappedGenes = geneSQL.get_results()
+    geneSQL.save_results('gene_mapping.pkl')
+    
+    # Initialize annotator object:
+    geneAnnotObj = gene_annotator.GeneAnnotator(verbose=1, RESTServer= RESTURL,
+                        EnsemblFtpPath=EnsemblFtpPath, HGNCFile=HGNC_file)
+    geneAnnotObj.save_data('gene_annotator.plk')
 
     # Generating documents:
-    gene_documents = gene_obj.create_document(genes_extracted)
+    geneDocuments = geneAnnotObj.create_document(geneSQL.get_results())
 
-    return(gene_documents)
+    return(geneDocuments)
 
 def get_gene_data():
     '''
@@ -126,7 +129,7 @@ def get_gene_data():
     # """
 
     # Get only genes with associations, assume if a 
-    # Gene has an association it is in the Genomic Context table
+    # Gene has an association it is in the Genomic Context table <= wrong assumption
     gene_sql = """
         SELECT DISTINCT(G.GENE_NAME), G.ID, 'gene' as resourcename
           FROM GENE G, GENOMIC_CONTEXT GC
@@ -306,12 +309,16 @@ if __name__ == '__main__':
     parser.add_argument('--document', default='publication',
                         choices=['publication', 'trait', 'variant', 'gene', 'all'],
                         help='Run as (default: publication).')
+    parser.add_argument('--restURL', default = 'https://jul2018.rest.ensembl.org', help = 'URL of Ensembl REST API. Determines which Ensembl release will be used.')
     args = parser.parse_args()
 
     global DATABASE_NAME
     DATABASE_NAME = args.database
 
     limit = args.limit
+
+    global RESTURL  
+    RESTURL = args.restURL
 
     # Docfile suffix
     # now = datetime.datetime.now()
@@ -323,7 +330,6 @@ if __name__ == '__main__':
     # select function
     dispatcher = {
         'publication' : publication_data, 
-        # 'study' : study_data,
         'trait' : trait_data, 
         'variant' : variant_data, 
         'gene' : gene_data

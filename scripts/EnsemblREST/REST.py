@@ -64,6 +64,58 @@ class REST(object):
             chromosome, start, end))
         return (self.__get_submit(URL))
 
+    # https://rest.ensembl.org/info/assembly/homo_sapiens?content-type=application/json&bands=1
+    def getAssembly(self, feature = "all", species = "homo_sapiens"):
+        '''
+        This function return assembly information.
+        Flexible for species and feature:
+            * chromosomes: {chr_name : length, ... }
+            * cytobands: [{id: <1p12>, start: 14123, end : 9898, chromosome: 1, stain: "acen"}, .... ]
+
+        If feature name is not matched, the full dataset will be returned.
+        '''
+
+        URL = ("%s/info/assembly/%s?content-type=application/json&bands=1" %(self.URL, species))
+        assemblyInfo = self.__get_submit(URL)
+
+        # Now we have to parse the returned data:
+        if feature == "all" :
+            return(assemblyInfo)
+        elif feature == 'chromosomes' or feature == 'cytobands':
+            cytobands = []
+            chromosomes = {}
+
+            for region in assemblyInfo['top_level_region']:
+                if region['coord_system'] != "chromosome":
+                    continue
+
+                # Extracting chromosome information:
+                chromosomes[region['name']] = region['length']
+
+                # Extracting cytoband informaion:
+                if feature == 'chromosomes' or 'bands' not in region:
+                    continue
+
+                # Extracting cytoband info:
+                for band in region['bands']:
+                    cytobands.append({
+                            "start" : band['start'],
+                            "stain" : band['stain'],
+                            "chromosome": band['seq_region_name'],
+                            "id"    : band['seq_region_name'] + band['id'],
+                            "end"   : band['end']
+                        })
+
+            # returning data once the read is complete:
+            if feature == 'chromosomes':
+                return(chromosomes)
+            elif feature == 'cytobands':
+                return(cytobands)
+
+        else:
+            print("[Warning] %s is an unregistered feature. Accepting 'chromosomes' or 'bands'." % feature)
+            return(assemblyInfo)
+    
     def postVariation(self, IDs, features = {}):
         ext = '/variation/homo_sapiens'
         return_list = {}
