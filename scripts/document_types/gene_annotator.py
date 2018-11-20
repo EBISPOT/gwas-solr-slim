@@ -101,7 +101,7 @@ class GeneAnnotator(object):
             raise(ValueError("[Error] The values of the input is not a dictionary."))
 
         # Test if the values contain the required fields:
-        requiredFields = ['assocCount', 'rsIDs', 'studyCount']
+        requiredFields = ['associationCount', 'rsIDs', 'studyCount']
         for field in requiredFields:
             if not field in inputData[test_key]:
                 raise(ValueError("[Error] %s field is missing from the dictionary." % field))

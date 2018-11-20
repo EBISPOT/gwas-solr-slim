@@ -1,6 +1,7 @@
 import os.path
 import pandas as pd
 import pickle
+from tqdm import tqdm
 
 class gene_sql(object):
     '''
@@ -77,11 +78,12 @@ class gene_sql(object):
         else:
             self.association_df = pd.read_sql(self.sql_associatinos_studies, self.connection)
                 
+        tqdm.pandas(desc="Extracting mapped genes...")
         # Looping through all associations and return genomic context:
         if limit != 0:
-            x = self.association_df.sample(n = limit).apply(self.__process_association_row, axis = 1)
+            x = self.association_df.sample(n = limit).progress_apply(self.__process_association_row, axis = 1)
         else:
-            x = self.association_df.apply(self.__process_association_row, axis = 1)
+            x = self.association_df.progress_apply(self.__process_association_row, axis = 1)
 
     def get_results(self):
         for EnsemblID in self.gene_container.keys():
@@ -156,7 +158,7 @@ class gene_sql(object):
                         'rsIDs' : [rsID],
                         'studyID' : [studyID],
                         'assocID' : [associationID],
-                        'assocCount' : 1
+                        'associationCount' : 1
                     }
                     gene_assoc.append(gene)
 
