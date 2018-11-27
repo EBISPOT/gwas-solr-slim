@@ -104,7 +104,7 @@ def gene_data(connection, limit=0):
         raise(ValueError("[Error] \"EnsemblFtpPath\" shell variable is not defined."))
 
     # Extract gene/mapping data from database:
-    geneSQL = gene.gene_sql(connection=connection,test=False)
+    geneSQL = gene.gene_sql(connection=connection, test = True)
     mappedGenes = geneSQL.get_results()
     geneSQL.save_results('gene_mapping.pkl')
     

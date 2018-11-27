@@ -6,6 +6,7 @@ import sys
 import re
 import os.path
 import pickle
+import urllib
 
 import io
 from tqdm import tqdm
@@ -137,7 +138,7 @@ class GeneAnnotator(object):
                 if key == 'biotype':
                     geneAnnot['biotype'] = value
                 if key == 'description':
-                    geneAnnot['description'] = value.split(" [")[0]
+                    geneAnnot['description'] = urllib.unquote(value.split(" [")[0])
                 else:
                     continue
             
@@ -153,7 +154,15 @@ class GeneAnnotator(object):
    
         # Pooling annotations into a pandas dataframe and format table:
         EnsAnnotDf = pd.DataFrame.from_records(EnsemblAnnotationContainer)
+
+        # Setting start and end columns as integers:
+        EnsAnnotDf.start = EnsAnnotDf.start.astype(int)
+        EnsAnnotDf.end = EnsAnnotDf.end.astype(int)
+
+        # Filtering df to only a selected list of columns:
         EnsAnnotDf = EnsAnnotDf[['seq_region_name','start', 'end', 'id', 'display_name', 'biotype', 'description']].sort_values(['seq_region_name', 'start'])
+        
+        # Reindex:
         EnsAnnotDf.index = EnsAnnotDf.id.tolist()
         
         if self.__verbose: print("[Info] Ensembl annotations are extracted for %s genes" % len(EnsAnnotDf))
@@ -240,9 +249,9 @@ class GeneAnnotator(object):
             try:
                 description = [
                     str(gene['ensemblDescription']),
-                    "%s:%s-%s" % (gene['chromosome'],
-                    gene['start'],
-                    gene['end']),
+                    "%s:%s-%s" % (gene['chromosomeName'],
+                    gene['chromosomeStart'],
+                    gene['chromosomeEnd']),
                     str(gene['cytobands']),
                     str(gene['biotype'])]
                 return("|".join(description))
@@ -261,9 +270,9 @@ class GeneAnnotator(object):
 
         def add_Ensembl_annot(gene, annot = {'start' : '', 'end' : '', 'seq_region_name': '',
                                             'biotype' : '', 'display_name' : '', 'description': ''}):
-            gene['start'] = annot['start']
-            gene['end'] = annot['end']
-            gene['chromosome'] = annot['seq_region_name']
+            gene['chromosomeStart'] = annot['start']
+            gene['chromosomeEnd'] = annot['end']
+            gene['chromosomeName'] = annot['seq_region_name']
             gene['biotype'] = annot['biotype']
             gene['title']= annot['display_name']
             if not 'description' in annot:
@@ -315,6 +324,10 @@ class GeneAnnotator(object):
                     add_Ensembl_annot(gene, missing_annotation[gene_ID])
                 except:
                     print("[Warning] Ensembl annotation has failed for %s" % gene_ID)
+
+            # Keeping only genes that are mapped to the chromosomes. Patches are excluded.
+            if len(gene['chromosomeName']) > 2 : 
+                continue
 
             # Adding HGNC annotation:
             try:

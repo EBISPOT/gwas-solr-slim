@@ -186,9 +186,8 @@
   <field name="rsIDs" type="string" indexed="true" stored="true" multiValued="true" />
   <field name="synonymsGene" type="text_general" indexed="true" stored="true" multiValued="false" />
   <field name="crossRefs" type="text_general" indexed="true" stored="true" multiValued="false" />
-  <field name="chromosome" type="text_general" indexed="true" stored="true" multiValued="false" />  
-  <field name="start" type="int" indexed="true" stored="true" multiValued="false" />
-  <field name="end" type="int" indexed="true" stored="true" multiValued="false" />
+  <field name="chromosomeStart" type="int" indexed="true" stored="true" multiValued="false" />
+  <field name="chromosomeEnd" type="int" indexed="true" stored="true" multiValued="false" />
   <field name="ensemblID" type="string" indexed="true" stored="true" multiValued="false" />
 
     <!-- Main body of document extracted by SolrCell.
@@ -287,8 +286,8 @@
     <copyField source="author" dest="text" />
 
     <!-- Copying fields from the gene documents -->
-    <copyField source="ensemblID" dest="text" />
-    <copyField source="synonymsGene" dest="text" />
+    <copyField source="ensemblID" dest="text" /> 
+    <!-- <copyField source="synonymsGene" dest="text" /> -->
     <copyField source="cytobands" dest="text" />
     <copyField source="synonyms" dest="text" />    
     <copyField source="rsIDs" dest="text" />
