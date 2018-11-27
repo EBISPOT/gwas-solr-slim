@@ -27,6 +27,8 @@ class gene_sql(object):
           OR SNP.RS_ID = 'rs12580100'
           OR SNP.RS_ID = 'rs7312770'
           OR SNP.RS_ID = 'rs7302200'
+          OR SNP.RS_ID = 'rs890076'
+          OR SNP.RS_ID = 'rs116175783'
         )
           AND SNP.ID = ASV.SNP_ID
           AND ASV.ASSOCIATION_ID = A.ID
