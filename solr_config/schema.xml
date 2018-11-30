@@ -292,6 +292,7 @@
     <copyField source="synonyms" dest="text" />    
     <copyField source="rsIDs" dest="text" />
     <copyField source="crossRefs" dest="text" />
+    <copyField source="ensemblDescription" dest="text" />
     
     <!-- Copying fields from the variant documents -->
     <copyField source="rsID" dest="text" />
