@@ -104,14 +104,19 @@ def gene_data(connection, limit=0):
         raise(ValueError("[Error] \"EnsemblFtpPath\" shell variable is not defined."))
 
     # Extract gene/mapping data from database:
-    geneSQL = gene.gene_sql(connection=connection, test = True)
+    geneSQL = gene.gene_sql(connection=connection, test = False, limit = limit)
     mappedGenes = geneSQL.get_results()
-    geneSQL.save_results('gene_mapping.pkl')
+    geneSQL.save_results('data/gene_mapping.pkl')
     
     # Initialize annotator object:
     geneAnnotObj = gene_annotator.GeneAnnotator(verbose=1, RESTServer= RESTURL,
                         EnsemblFtpPath=EnsemblFtpPath, HGNCFile=HGNC_file)
-    geneAnnotObj.save_data('gene_annotator.plk')
+    geneAnnotObj.save_data('data/gene_annotator.pkl')
+
+    # Reading the annotator from pickle, for testing:
+    #annotatorFile = 'gene_annotator.plk'
+    #with (open(annotatorFile, 'rb'))as f:
+    #    geneAnnotObj = pickle.load(f)
 
     # Generating documents:
     geneDocuments = geneAnnotObj.create_document(geneSQL.get_results())

@@ -74,6 +74,9 @@ class gene_sql(object):
         self.rsID_container = {}        
         self.connection = connection
 
+        if limit == 12:
+          test = True
+
         # We extract the list of studies and associations:
         if test:
             self.association_df = pd.read_sql(self.sql_test_query, self.connection)
@@ -82,7 +85,7 @@ class gene_sql(object):
                 
         tqdm.pandas(desc="Extracting mapped genes...")
         # Looping through all associations and return genomic context:
-        if limit != 0:
+        if limit != None:
             x = self.association_df.sample(n = limit).progress_apply(self.__process_association_row, axis = 1)
         else:
             x = self.association_df.progress_apply(self.__process_association_row, axis = 1)

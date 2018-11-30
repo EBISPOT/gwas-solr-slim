@@ -283,9 +283,9 @@ class GeneAnnotator(object):
                 gene['ensemblDescription'] = str(annot['description']).split(' [Source')[0]                
 
         def get_cytoband(gene, cytoband):
-            chrom = gene['chromosome']
-            start = gene['start']
-            end = gene['end']
+            chrom = gene['chromosomeName']
+            start = gene['chromosomeStart']
+            end = gene['chromosomeEnd']
 
             bands = cytoband.loc[(cytoband.chromosome == str(chrom)) 
                                  & (cytoband.start <= int(start)) 
@@ -346,13 +346,17 @@ class GeneAnnotator(object):
             try:
                 get_cytoband(gene, self.__cytobands)
             except:
-                print("[Warning] cytobands are not foun for %s" % gene_ID)
+                print("[Warning] cytobands were not found for %s" % gene_ID)
                 gene['cytobands'] = '-'
 
             # Adding formatted description:
             gene['description'] = generate_description(gene)
 
             # Adding gene to gene document:
+            if gene == None:
+                print(x)
+                print(gene_ID)
+
             GeneDocuments.append(gene)
 
         print("[Info] Gene documents are done.")
