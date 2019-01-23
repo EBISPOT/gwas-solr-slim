@@ -44,7 +44,8 @@ class DataFormatter:
             if 'descendants' in term_result['_links'].keys():
                 result_obj[descendants] = term_result['_links']['descendants']['href']
             else:
-                print "** No descendants"
+                # print "** No descendants"
+                pass
 
         results_list.append(result_obj)
 

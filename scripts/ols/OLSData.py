@@ -100,7 +100,6 @@ class OLSData:
                     return (data_formatter.get_descendant_ids())
 
                 else:
-                    # print "** No data returned!!!"
                     return no_descendant_results
             
             else:
