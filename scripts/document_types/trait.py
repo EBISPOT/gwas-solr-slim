@@ -31,12 +31,12 @@ def get_trait_data(connection, limit=0):
         and ET.ID= :trait_id
     """
 
-    trait_association_cnt_sql = """
-        SELECT COUNT(A.ID)
-        FROM EFO_TRAIT ET, ASSOCIATION_EFO_TRAIT AET, ASSOCIATION A
-        WHERE ET.ID=AET.EFO_TRAIT_ID AND AET.ASSOCIATION_ID=A.ID
-              AND ET.ID= :trait_id
-    """
+    # trait_association_cnt_sql = """
+    #     SELECT COUNT(A.ID)
+    #     FROM EFO_TRAIT ET, ASSOCIATION_EFO_TRAIT AET, ASSOCIATION A
+    #     WHERE ET.ID=AET.EFO_TRAIT_ID AND AET.ASSOCIATION_ID=A.ID
+    #           AND ET.ID= :trait_id
+    # """
 
     all_trait_data = []
 
@@ -45,6 +45,16 @@ def get_trait_data(connection, limit=0):
             cursor.execute(efo_sql)
             mapped_trait_data = cursor.fetchall()
 
+            # Build Lookup table of EFO_ID to Study count
+            efo_study_count_map = __build_efo_studyCnt_map(mapped_trait_data)
+
+            # Build Lookup table of EFO_ID to Association count
+            efo_association_count_map = __build_efo_associationCnt_map(mapped_trait_data, cursor)
+
+            # Build Lookup table of EFO_ID to list of children
+            __get_descendants(mapped_trait_data)
+
+
             for mapped_trait in tqdm(mapped_trait_data, desc='Get EFO/Mapped trait data'):
                 # Data object for each mapped trait
                 mapped_trait_document = {}
@@ -52,7 +62,12 @@ def get_trait_data(connection, limit=0):
                 mapped_trait_document['id'] = mapped_trait[4]+":"+str(mapped_trait[0])
                 mapped_trait_document['mappedTrait'] = mapped_trait[1]
                 mapped_trait_document['mappedUri'] = mapped_trait[2]
-                mapped_trait_document['studyCount'] = mapped_trait[3]
+                
+                # Study Count needs to be for current EFO and All of it's children
+                # mapped_trait_document['studyCount'] = mapped_trait[3]
+                mapped_trait_document['studyCount'] = efo_study_count_map[mapped_trait[5]]
+
+
                 mapped_trait_document['resourcename'] = mapped_trait[4]
                 mapped_trait_document['efoLink'] = [mapped_trait[1]+"|"+\
                     mapped_trait[5]+"|"+mapped_trait[2]]
@@ -88,22 +103,25 @@ def get_trait_data(connection, limit=0):
                 #######################################
                 # Get count of associations per trait
                 #######################################
-                cursor.prepare(trait_association_cnt_sql)
-                r = cursor.execute(None, {'trait_id': mapped_trait[0]})
-                trait_assoc_cnt = cursor.fetchone()
+                # cursor.prepare(trait_association_cnt_sql)
+                # r = cursor.execute(None, {'trait_id': mapped_trait[0]})
+                # trait_assoc_cnt = cursor.fetchone()
 
-                if not trait_assoc_cnt:
-                    trait_assoc_cnt = 0
-                    mapped_trait_document['associationCount'] = trait_assoc_cnt
-                else:
-                    mapped_trait_document['associationCount'] = trait_assoc_cnt[0]
+                # if not trait_assoc_cnt:
+                #     trait_assoc_cnt = 0
+                #     mapped_trait_document['associationCount'] = trait_assoc_cnt
+                # else:
+                #     mapped_trait_document['associationCount'] = trait_assoc_cnt[0]
+                
+                mapped_trait_document['associationCount'] = efo_association_count_map[mapped_trait[5]]
 
 
                 #####################################
                 # Get EFO term information from OLS
                 #####################################
                 ols_data = OLSData.OLSData(mapped_trait[2])
-                ols_term_data = ols_data.get_ols_term()
+                type = 'ancestors'
+                ols_term_data = ols_data.get_ols_term(type)
 
 
                 if not ols_term_data['iri'] == None:
@@ -166,3 +184,90 @@ def get_trait_data(connection, limit=0):
 
     except cx_Oracle.DatabaseError, exception:
         print exception
+
+
+def __build_efo_studyCnt_map(efo_data):
+    ''' 
+    Given a list of data from the "efo_sql" query, build lookup table
+    keyed on EFO Id with the value as the Study count.
+    '''
+    efo_study = {}
+
+    for row in efo_data:
+        efo_id = row[5]
+        study_count = row[3]
+
+        efo_study[efo_id] = study_count
+
+    return efo_study
+
+
+def __build_efo_associationCnt_map(efo_data, cursor):
+    '''
+    Given a list of data from the "efo_sql" query, build a lookup table
+    keyed on the EFO Id with the value as Association count.
+    '''
+    efo_association = {}
+
+    trait_association_cnt_sql = """
+        SELECT COUNT(A.ID)
+        FROM EFO_TRAIT ET, ASSOCIATION_EFO_TRAIT AET, ASSOCIATION A
+        WHERE ET.ID=AET.EFO_TRAIT_ID AND AET.ASSOCIATION_ID=A.ID
+              AND ET.SHORT_FORM= :trait_id
+    """
+
+    # Get count of associations per trait
+    for row in efo_data:
+        efo_id = row[5]
+
+        cursor.prepare(trait_association_cnt_sql)
+        r = cursor.execute(None, {'trait_id': efo_id})
+        trait_assoc_cnt = cursor.fetchone()
+
+        if not trait_assoc_cnt:
+            trait_assoc_cnt = 0
+            efo_association[efo_id] = trait_assoc_cnt
+        else:
+            efo_association[efo_id] = trait_assoc_cnt[0]
+
+    return efo_association
+
+
+def __get_descendants(efo_data):
+    '''
+    For each EFO Id, get a list of all descendants and 
+    store in a lookup table keyed on the EFO Id with the 
+    value as the list of descendant EFO Ids (short_form).
+    '''
+
+    type = 'descendants'
+    
+    # TEST - Get descendants
+    for row in efo_data:
+        print "** EFO ID: ", row[2]
+        ols_data = OLSData.OLSData(row[2])
+        ols_term_data = ols_data.get_ols_term(type)
+        # print "** TD: ", ols_term_data
+
+        if not ols_term_data['iri'] == None:
+            # if not ols_term_data['descendants'] == None:
+            if 'descendants' in ols_term_data.keys():
+                        descendant_data = OLSData.OLSData(ols_term_data['descendants'])
+                        descendant_terms = [descendant.encode('utf-8') for descendant in descendant_data.get_descendants()]
+                        # mapped_trait_document['parent'] = ancestor_terms
+                        print "** Descendants: ", descendant_terms
+            else:
+                print "** Term has no descendants!\n"
+
+
+
+
+
+
+
+
+
+
+
+
+

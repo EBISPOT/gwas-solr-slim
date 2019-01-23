@@ -10,7 +10,7 @@ class OLSData:
         self.term_iri = term_iri
 
     
-    def get_ols_term(self):
+    def get_ols_term(self, type):
         '''
         Use OLS Term API to get details about an ontology term. 
         '''
@@ -32,7 +32,7 @@ class OLSData:
 
                 if results:
                     data_formatter = DataFormatter.DataFormatter(results)
-                    return (data_formatter.get_term_information())
+                    return (data_formatter.get_term_information(type))
 
                 else:
                     print "** No data returned!!!"
@@ -71,6 +71,37 @@ class OLSData:
                 else:
                     # print "** No data returned!!!"
                     return no_ancestor_results
+            
+            else:
+                return no_results
+        
+        except requests.exceptions.RequestException as e:
+            print e
+
+
+
+    def get_descendants(self):
+        '''
+        Use OLS to get descendants for a term. NOTE: This link is from the "descendants"
+        web service and is already URL double-encoded.
+        '''
+
+        OLS_DESCENDANT_URL = self.term_iri
+
+        no_descendant_results = []
+
+        try:
+            response = requests.get(OLS_DESCENDANT_URL)
+            if response.status_code == 200:
+                results = json.loads(response.content)
+
+                if results:
+                    data_formatter = DataFormatter.DataFormatter(results)
+                    return (data_formatter.get_descendant_ids())
+
+                else:
+                    # print "** No data returned!!!"
+                    return no_descendant_results
             
             else:
                 return no_results
