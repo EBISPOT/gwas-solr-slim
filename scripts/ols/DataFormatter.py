@@ -21,7 +21,7 @@ class DataFormatter:
         short_form_key = "short_form"
         definition_key = "description"
         ancestors = "ancestors"
-        descendants = "descendants"
+        hierarchicalDescendants = "hierarchicalDescendants"
 
 
         if label_key in keys:
@@ -39,12 +39,11 @@ class DataFormatter:
         if type == 'ancestors':
             result_obj[ancestors] = term_result['_links']['ancestors']['href']
         
-        # Get link for descendants
-        if type == 'descendants':
-            if 'descendants' in term_result['_links'].keys():
-                result_obj[descendants] = term_result['_links']['descendants']['href']
+        # Get link for hierarchicalDescendants
+        if type == 'hierarchicalDescendants':
+            if 'hierarchicalDescendants' in term_result['_links'].keys():
+                result_obj[hierarchicalDescendants] = term_result['_links']['hierarchicalDescendants']['href']
             else:
-                # print "** No descendants"
                 pass
 
         results_list.append(result_obj)
@@ -70,22 +69,22 @@ class DataFormatter:
 
 
 
-    def get_descendant_ids(self):
+    def get_hierarchicalDescendants_ids(self):
         '''
         Parse and return only term ids from the OLS "descendants" link.
 
         '''
 
-        descendants = self.data
+        hierarchicalDescendants = self.data
 
-        descendant_ids = []
+        hierarchicalDescendants_ids = []
 
-        for term in descendants['_embedded']['terms']:
+        for term in hierarchicalDescendants['_embedded']['terms']:
             # TODO: Do not include ontology metadata 
             # terms, e.g. Thing, disposition, experimental factor ontology
-            descendant_ids.append(term['short_form'])
+            hierarchicalDescendants_ids.append(term['short_form'])
 
-        return descendant_ids
+        return hierarchicalDescendants_ids
 
 
 

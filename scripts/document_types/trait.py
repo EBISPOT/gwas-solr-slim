@@ -250,19 +250,18 @@ def __get_descendants(efo_data):
     value as the list of descendant EFO Ids (short_form).
     '''
 
-    type = 'descendants'
+    type = 'hierarchicalDescendants'
     efo_descendants = {}
     
-    for row in tqdm(efo_data, desc='Getting EFO term - descendant mapping'):
+    for row in tqdm(efo_data, desc='Getting EFO term - hierarchicalDescendants mapping'):
         ols_data = OLSData.OLSData(row[2])
         ols_term_data = ols_data.get_ols_term(type)
 
-
         if not ols_term_data['iri'] == None:
-            if 'descendants' in ols_term_data.keys():
-                    descendant_data = OLSData.OLSData(ols_term_data['descendants'])
-                    descendant_terms = [descendant.encode('utf-8') for descendant in descendant_data.get_descendants()]
-                    efo_descendants[row[5]] = descendant_terms
+            if 'hierarchicalDescendants' in ols_term_data.keys():
+                descendant_data = OLSData.OLSData(ols_term_data['hierarchicalDescendants'])
+                descendant_terms = [descendant.encode('utf-8') for descendant in descendant_data.get_hierarchicalDescendants()]
+                efo_descendants[row[5]] = descendant_terms
             else:
                 # add key and empty list to map
                 efo_descendants[row[5]] = []

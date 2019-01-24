@@ -35,7 +35,6 @@ class OLSData:
                     return (data_formatter.get_term_information(type))
 
                 else:
-                    print "** No data returned!!!"
                     return no_results
             
             else:
@@ -80,13 +79,13 @@ class OLSData:
 
 
 
-    def get_descendants(self):
+    def get_hierarchicalDescendants(self):
         '''
-        Use OLS to get descendants for a term. NOTE: This link is from the "descendants"
+        Use OLS to get hierarchicalDescendants for a term. NOTE: This link is from the "descendants"
         web service and is already URL double-encoded.
         '''
 
-        OLS_DESCENDANT_URL = self.term_iri
+        OLS_DESCENDANT_URL = self.term_iri+"?size=1000"
 
         no_descendant_results = []
 
@@ -97,7 +96,7 @@ class OLSData:
 
                 if results:
                     data_formatter = DataFormatter.DataFormatter(results)
-                    return (data_formatter.get_descendant_ids())
+                    return (data_formatter.get_hierarchicalDescendants_ids())
 
                 else:
                     return no_descendant_results
