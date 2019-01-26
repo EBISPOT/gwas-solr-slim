@@ -87,4 +87,14 @@ class DataFormatter:
         return hierarchicalDescendants_ids
 
 
+    def get_pages(self):
+        '''
+        Check number of pages of data.
+        '''
+        data = self.data
+
+        num_pages = data['page']['totalPages']
+
+        return num_pages
+
 
