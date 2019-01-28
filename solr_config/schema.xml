@@ -117,7 +117,9 @@
 
   <!-- Commonly used, but not mandatory fields shared by many document types -->
   <field name="associationCount" type="int" indexed="false" stored="true" multiValued="false" />
+  <field name="termAssociationCount" type="int" indexed="false" stored="true" multiValued="false" />
   <field name="studyCount" type="int" indexed="false" stored="true" multiValued="false" />
+  <field name="termStudyCount" type="int" indexed="false" stored="true" multiValued="false" />
   <field name="reportedTrait_s" type="text_general" indexed="true" stored="true" multiValued="false" />
   <field name="reportedTrait" type="text_general" indexed="true" stored="true" multiValued="true" />
 

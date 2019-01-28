@@ -10,7 +10,7 @@ class OLSData:
         self.term_iri = term_iri
 
     
-    def get_ols_term(self):
+    def get_ols_term(self, type):
         '''
         Use OLS Term API to get details about an ontology term. 
         '''
@@ -32,10 +32,9 @@ class OLSData:
 
                 if results:
                     data_formatter = DataFormatter.DataFormatter(results)
-                    return (data_formatter.get_term_information())
+                    return (data_formatter.get_term_information(type))
 
                 else:
-                    print "** No data returned!!!"
                     return no_results
             
             else:
@@ -75,6 +74,68 @@ class OLSData:
             else:
                 return no_results
         
+        except requests.exceptions.RequestException as e:
+            print e
+
+
+
+    def get_hierarchicalDescendants(self, page=0):
+        '''
+        Use OLS to get hierarchicalDescendants for a term. NOTE: This link is from the "descendants"
+        web service and is already URL double-encoded.
+        '''
+
+        OLS_DESCENDANT_URL = self.term_iri+"?size=1000&page={}".format(page)
+
+        no_descendant_results = []
+        all_descendants = []
+
+        try:
+            response = requests.get(OLS_DESCENDANT_URL)
+            if response.status_code == 200:
+                results = json.loads(response.content)
+
+                if results:
+                    data_formatter = DataFormatter.DataFormatter(results)
+                    total_pages = data_formatter.get_pages()
+
+                    if total_pages == 1:
+                        return (data_formatter.get_hierarchicalDescendants_ids())
+                    else:
+                        while page < total_pages:                            
+                            efo_ids = OLSData.__get_pages(self, page)
+                            all_descendants.extend(efo_ids)
+
+                            page += 1
+
+                    return all_descendants
+                else:
+                    return no_descendant_results
+            
+            else:
+                return no_results
+        
+        except requests.exceptions.RequestException as e:
+            print e
+
+
+    def __get_pages(self, page):
+        '''
+        Get pages of data.
+        '''
+
+        OLS_DESCENDANT_URL = self.term_iri+"?size=1000&page={}".format(page)
+
+        try:
+            response = requests.get(OLS_DESCENDANT_URL)
+            if response.status_code == 200:
+                results = json.loads(response.content)
+
+                data_formatter = DataFormatter.DataFormatter(results)
+                child_ids = data_formatter.get_hierarchicalDescendants_ids()
+                return child_ids
+            else:
+                return no_results
         except requests.exceptions.RequestException as e:
             print e
 

@@ -15,6 +15,7 @@ def get_trait_data(connection, limit=0):
     '''
     
     # Only select EFOs that are already assigned to Studies
+    # QUESTION: Should this also include EFOs assigned to Associations via Association_EFO_Trait table?
     efo_sql = """
         SELECT DISTINCT(ET.ID), ET.TRAIT, ET.URI, COUNT(S.ID), 
             'trait' as resourcename, ET.SHORT_FORM
@@ -31,13 +32,6 @@ def get_trait_data(connection, limit=0):
         and ET.ID= :trait_id
     """
 
-    trait_association_cnt_sql = """
-        SELECT COUNT(A.ID)
-        FROM EFO_TRAIT ET, ASSOCIATION_EFO_TRAIT AET, ASSOCIATION A
-        WHERE ET.ID=AET.EFO_TRAIT_ID AND AET.ASSOCIATION_ID=A.ID
-              AND ET.ID= :trait_id
-    """
-
     all_trait_data = []
 
     try:
@@ -45,14 +39,29 @@ def get_trait_data(connection, limit=0):
             cursor.execute(efo_sql)
             mapped_trait_data = cursor.fetchall()
 
+            # Build Lookup table of EFO_ID to list of children
+            efo_descendants_map =  __get_descendants(mapped_trait_data)
+
+            # Get list of all EFOs used as annotations
+            all_efos = []
+            for row in mapped_trait_data:
+                all_efos.append(row[5])
+
+
+            # Build Lookup table of EFO_ID to Association count
+            efo_association_count_map = __build_efo_associationCnt_map(mapped_trait_data, cursor)
+
+
             for mapped_trait in tqdm(mapped_trait_data, desc='Get EFO/Mapped trait data'):
+
                 # Data object for each mapped trait
                 mapped_trait_document = {}
 
                 mapped_trait_document['id'] = mapped_trait[4]+":"+str(mapped_trait[0])
                 mapped_trait_document['mappedTrait'] = mapped_trait[1]
                 mapped_trait_document['mappedUri'] = mapped_trait[2]
-                mapped_trait_document['studyCount'] = mapped_trait[3]
+
+
                 mapped_trait_document['resourcename'] = mapped_trait[4]
                 mapped_trait_document['efoLink'] = [mapped_trait[1]+"|"+\
                     mapped_trait[5]+"|"+mapped_trait[2]]
@@ -65,6 +74,49 @@ def get_trait_data(connection, limit=0):
                 mapped_trait_document['label_autosuggest'] = [mapped_trait[1]]
                 mapped_trait_document['label_autosuggest_ws'] = [mapped_trait[1]]
                 mapped_trait_document['label_autosuggest_e'] = [mapped_trait[1]]
+
+                
+                mapped_trait_document['termStudyCount'] = mapped_trait[3]
+                mapped_trait_document['termAssociationCount'] = efo_association_count_map[mapped_trait[5]]
+
+
+                #######################################################
+                # Get Study and Association count for EFO term 
+                # and all of it's children IF the Study Accession 
+                # or Association has not already been counted 
+                ########################################################
+                
+                all_unique_study_count = 0
+                all_unique_association_count = 0
+
+
+                # check if descendants are known, e.g. term may not be in release EFO yet
+                if mapped_trait[5] in efo_descendants_map.keys():
+                    children = efo_descendants_map[mapped_trait[5]]
+
+                    # check if children list contains values
+                    if children:
+                        # remove children that are not in EFO table
+                        available_efo_children = list(set(all_efos).intersection(set(children)))
+
+                        available_efo_children.append(mapped_trait[5])
+                        if len(available_efo_children) >= 1000:
+                            print "[Error] Too many EFOs for query: ", mapped_trait[5], len(available_efo_children)
+
+                        #TODO: Handle case if available_efo_children > 1000
+                        all_unique_study_count = __get_count(available_efo_children[0:999], cursor, 'study')
+                        mapped_trait_document['studyCount'] = all_unique_study_count
+
+                        all_unique_association_count = __get_count(available_efo_children[0:999], cursor, 'association')
+                        mapped_trait_document['associationCount'] = all_unique_association_count 
+                    else:
+                        mapped_trait_document['studyCount'] = mapped_trait[3]
+                        mapped_trait_document['associationCount'] = efo_association_count_map[mapped_trait[5]]
+
+                # term not yet in EFO 
+                else:
+                    mapped_trait_document['studyCount'] = mapped_trait[3]
+                    mapped_trait_document['associationCount'] = efo_association_count_map[mapped_trait[5]]
 
 
                 #########################
@@ -84,26 +136,13 @@ def get_trait_data(connection, limit=0):
                 reported_trait_s = ', '.join(reported_trait_list)
                 mapped_trait_document['reportedTrait_s'] = reported_trait_s
 
-                
-                #######################################
-                # Get count of associations per trait
-                #######################################
-                cursor.prepare(trait_association_cnt_sql)
-                r = cursor.execute(None, {'trait_id': mapped_trait[0]})
-                trait_assoc_cnt = cursor.fetchone()
-
-                if not trait_assoc_cnt:
-                    trait_assoc_cnt = 0
-                    mapped_trait_document['associationCount'] = trait_assoc_cnt
-                else:
-                    mapped_trait_document['associationCount'] = trait_assoc_cnt[0]
-
 
                 #####################################
                 # Get EFO term information from OLS
                 #####################################
                 ols_data = OLSData.OLSData(mapped_trait[2])
-                ols_term_data = ols_data.get_ols_term()
+                type = 'ancestors'
+                ols_term_data = ols_data.get_ols_term(type)
 
 
                 if not ols_term_data['iri'] == None:
@@ -161,8 +200,107 @@ def get_trait_data(connection, limit=0):
                 ############################################
                 all_trait_data.append(mapped_trait_document)
 
-        return all_trait_data
+            return all_trait_data
 
 
     except cx_Oracle.DatabaseError, exception:
         print exception
+
+
+
+def __get_count(efos, cursor, count_type):
+    '''
+    Get unique count of Study Accessions for 
+    these EFO IDs, Parent trait and all of it's children.
+    '''
+
+    in_vars = ','.join(':%d' % i for i in xrange(len(efos)))
+
+    unique_study_count_sql = """
+        SELECT COUNT(DISTINCT (S.ACCESSION_ID)) 
+        FROM STUDY S, EFO_TRAIT ET, STUDY_EFO_TRAIT SETR
+        WHERE S.ID=SETR.STUDY_ID and SETR.EFO_TRAIT_ID=ET.ID
+            and ET.SHORT_FORM in ( {} )
+    """.format(in_vars)
+
+
+    unique_association_count_sql = """
+        SELECT COUNT(DISTINCT(A.ID))
+        FROM ASSOCIATION_EFO_TRAIT AET, EFO_TRAIT ET, ASSOCIATION A
+        WHERE AET.EFO_TRAIT_ID=ET.ID and AET.ASSOCIATION_ID=A.ID
+            and ET.SHORT_FORM in ( {} )
+    """.format(in_vars)
+
+
+    if count_type == 'study':
+        sql = unique_study_count_sql
+    if count_type == 'association':
+        sql = unique_association_count_sql
+
+
+    cursor.execute(sql, efos)
+    count = cursor.fetchone()
+
+    return count[0]
+
+
+def __build_efo_associationCnt_map(efo_data, cursor):
+    '''
+    Given a list of data from the "efo_sql" query, build a lookup table
+    keyed on the EFO Id with the value as Association count.
+    '''
+    efo_association = {}
+
+    trait_association_cnt_sql = """
+        SELECT COUNT(A.ID)
+        FROM EFO_TRAIT ET, ASSOCIATION_EFO_TRAIT AET, ASSOCIATION A
+        WHERE ET.ID=AET.EFO_TRAIT_ID AND AET.ASSOCIATION_ID=A.ID
+              AND ET.SHORT_FORM= :trait_id
+    """
+
+    # Get count of associations per trait
+    for row in efo_data:
+        efo_id = row[5]
+
+        cursor.prepare(trait_association_cnt_sql)
+        r = cursor.execute(None, {'trait_id': efo_id})
+        trait_assoc_cnt = cursor.fetchone()
+
+        if not trait_assoc_cnt:
+            trait_assoc_cnt = 0
+            efo_association[efo_id] = trait_assoc_cnt
+        else:
+            efo_association[efo_id] = trait_assoc_cnt[0]
+
+    return efo_association
+
+
+def __get_descendants(efo_data):
+    '''
+    For each EFO Id, get a list of all descendants and 
+    store in a lookup table keyed on the EFO Id with the 
+    value as the list of descendant EFO Ids (short_form).
+    '''
+
+    type = 'hierarchicalDescendants'
+    efo_descendants = {}
+
+
+    for row in tqdm(efo_data, desc='Getting EFO term - hierarchicalDescendants mapping'):
+
+        ols_data = OLSData.OLSData(row[2])
+        ols_term_data = ols_data.get_ols_term(type)
+
+        if not ols_term_data['iri'] == None:
+            if 'hierarchicalDescendants' in ols_term_data.keys():
+                descendant_data = OLSData.OLSData(ols_term_data['hierarchicalDescendants'])
+                descendant_terms = [descendant.encode('utf-8') for descendant in descendant_data.get_hierarchicalDescendants()]
+                efo_descendants[row[5]] = descendant_terms
+            else:
+                # add key and empty list to map
+                efo_descendants[row[5]] = []
+
+    return efo_descendants
+
+
+
