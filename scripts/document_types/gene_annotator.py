@@ -20,7 +20,7 @@ class GeneAnnotator(object):
     This class collects gene annotations from various sources then generates gene solr objects.
     '''
     
-    def __init__(self, HGNCFile, EnsemblFtpPath, verbose = False, RESTServer = 'https://rest.ensembl.org'):
+    def __init__(self, HGNCFile, EnsemblFtpPath, RESTServer, verbose = False):
         # Setting verbosity flag:
         self.__verbose = verbose
 
@@ -178,13 +178,10 @@ class GeneAnnotator(object):
         3. Adding dataframe to object.
         '''
 
-        # The file name needs to be read from the environment:
-        HGNC_file = '/nfs/ftp/pub/databases/genenames/new/tsv/non_alt_loci_set.txt'
-
         # Report:
-        if self.__verbose: print("[Info] Retrieving HGNC dataset from %s" % HGNC_file )
+        if self.__verbose: print("[Info] Retrieving HGNC dataset from %s" % self.__HGNCFile )
 
-        df = pd.read_table(HGNC_file, dtype = str)
+        df = pd.read_table(self.__HGNCFile, dtype = str)
         
         def concatenate(x):
             row = x.loc[~ x.isna()].tolist()
@@ -276,9 +273,9 @@ class GeneAnnotator(object):
             gene['biotype'] = annot['biotype']
             gene['title']= annot['display_name']
             if not 'description' in annot:
-                gene['ensemblDescription'] = ''
+                gene['ensemblDescription'] = 'No description available'
             elif isinstance(annot['description'], float):
-                gene['ensemblDescription'] = ''
+                gene['ensemblDescription'] = 'No description available'
             else:
                 gene['ensemblDescription'] = str(annot['description']).split(' [Source')[0]                
 

@@ -124,6 +124,12 @@ def get_publication_data(connection, limit=0):
 
                 # Create first author
                 # first_author = [author_data[0][0]]
+                
+                # There's a chance that a publication has no authors:
+                if not author_data: 
+                    print("[Warning] Publication does not have any author: %s. Publication is skipped." % publication[1])
+                    continue
+
                 publication_document[publication_attr_list[6]] = [author_data[0][0]]  # noqa
 
                 # Create first author as string

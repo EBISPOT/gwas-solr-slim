@@ -124,7 +124,7 @@
   <!--specific fields for Publication -->
   <field name="pmid" type="string" indexed="true" stored="true" multiValued="false" />
   <field name="journal" type="string" indexed="true" stored="true" multiValued="false" />
-  <field name="publicationDate" type="text_general" indexed="true" stored="true" />
+  <field name="publicationDate" type="string" indexed="true" stored="true" />
   <field name="author" type="text_general" indexed="true" stored="true" multiValued="true" />
   <field name="author_s" type="text_general" indexed="true" stored="true" multiValued="false" />
   <field name="authorAscii" type="text_general" indexed="true" stored="true" multiValued="true" />

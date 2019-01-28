@@ -12,7 +12,7 @@ class REST(object):
     switch to alternative or to the GRCh37 server.
     '''
 
-    def __init__(self, URL = 'https://rest.ensembl.org'):
+    def __init__(self, URL):
         self.URL = URL
 
     # https://rest.ensembl.org/info/data/?content-type=application/json
