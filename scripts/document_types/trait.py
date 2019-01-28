@@ -32,13 +32,6 @@ def get_trait_data(connection, limit=0):
         and ET.ID= :trait_id
     """
 
-    # trait_association_cnt_sql = """
-    #     SELECT COUNT(A.ID)
-    #     FROM EFO_TRAIT ET, ASSOCIATION_EFO_TRAIT AET, ASSOCIATION A
-    #     WHERE ET.ID=AET.EFO_TRAIT_ID AND AET.ASSOCIATION_ID=A.ID
-    #           AND ET.ID= :trait_id
-    # """
-
     all_trait_data = []
 
     try:
@@ -55,18 +48,11 @@ def get_trait_data(connection, limit=0):
                 all_efos.append(row[5])
 
 
-            # Build Lookup table of EFO_ID to Study count
-            # efo_study_count_map = __build_efo_studyCnt_map(mapped_trait_data, cursor)
-
-
             # Build Lookup table of EFO_ID to Association count
             efo_association_count_map = __build_efo_associationCnt_map(mapped_trait_data, cursor)
 
-            # count = 0
 
             for mapped_trait in tqdm(mapped_trait_data, desc='Get EFO/Mapped trait data'):
-                # count += 1
-                # if count >= 745 and count <= 755:
 
                 # Data object for each mapped trait
                 mapped_trait_document = {}
@@ -92,7 +78,6 @@ def get_trait_data(connection, limit=0):
                 
                 mapped_trait_document['termStudyCount'] = mapped_trait[3]
                 mapped_trait_document['termAssociationCount'] = efo_association_count_map[mapped_trait[5]]
-                # mapped_trait_document['associationCount'] = 0
 
 
                 #######################################################
@@ -115,7 +100,10 @@ def get_trait_data(connection, limit=0):
                         available_efo_children = list(set(all_efos).intersection(set(children)))
 
                         available_efo_children.append(mapped_trait[5])
-                        
+                        if len(available_efo_children) >= 1000:
+                            print "[Error] Too many EFOs for query: ", mapped_trait[5], len(available_efo_children)
+
+                        #TODO: Handle case if available_efo_children > 1000
                         all_unique_study_count = __get_count(available_efo_children[0:999], cursor, 'study')
                         mapped_trait_document['studyCount'] = all_unique_study_count
 
@@ -219,42 +207,6 @@ def get_trait_data(connection, limit=0):
         print exception
 
 
-def __build_efo_studyCnt_map(efo_data, cursor):
-    ''' 
-    Given a list of data from the "efo_sql" query, build lookup table
-    keyed on EFO Id with the value as the Study count.
-    '''
-    efo_study = {}
-    studies = []
-
-    studies_per_efo = """
-        SELECT listagg(x.ACCESSION_ID, ', ') WITHIN GROUP (ORDER BY x.ACCESSION_ID)
-        FROM (
-            SELECT DISTINCT ET.SHORT_FORM, S.ACCESSION_ID
-            FROM STUDY S, EFO_TRAIT ET, STUDY_EFO_TRAIT SETR
-            WHERE S.ID=SETR.STUDY_ID and SETR.EFO_TRAIT_ID=ET.ID
-                and ET.SHORT_FORM= :efo_short_form
-            ) x
-    """
-
-    for row in efo_data:
-        efo_short_form = row[5]
-        # study_count = row[3]
-        # efo_study[efo_id] = study_count
-        
-        # Get list of Study Accessions for this EFO term
-        cursor.prepare(studies_per_efo)
-        r = cursor.execute(None, {'efo_short_form': efo_short_form})
-        studies = cursor.fetchone()
-
-        if not studies:
-            studies = []
-            efo_study[efo_short_form] = studies
-        else:
-            efo_study[efo_short_form] = studies
-
-    return efo_study
-
 
 def __get_count(efos, cursor, count_type):
     '''
@@ -332,12 +284,9 @@ def __get_descendants(efo_data):
 
     type = 'hierarchicalDescendants'
     efo_descendants = {}
-    
-    # count = 0
+
 
     for row in tqdm(efo_data, desc='Getting EFO term - hierarchicalDescendants mapping'):
-        # count += 1
-        # if count >= 745 and count <= 755:
 
         ols_data = OLSData.OLSData(row[2])
         ols_term_data = ols_data.get_ols_term(type)
@@ -352,14 +301,6 @@ def __get_descendants(efo_data):
                 efo_descendants[row[5]] = []
 
     return efo_descendants
-
-
-
-
-
-
-
-
 
 
 
