@@ -173,7 +173,7 @@
   <!-- specific fields for Variant -->
   <field name="consequence" type="text_general" indexed="true" stored="true" multiValued="false" />
   <field name="chromosomeName" type="text_general" indexed="true" stored="true" multiValued="false" />
-  <field name="chromosomePosition" type="text_general" indexed="true" stored="true" multiValued="false" />
+  <field name="chromosomePosition" type="int" indexed="true" stored="true" multiValued="false" />
   <field name="region" type="text_general" indexed="true" stored="true" multiValued="false" />
   <field name="mappedGenes" type="string" indexed="true" stored="true" multiValued="true" />
   <field name="rsID" type="text_general" indexed="true" stored="true" multiValued="false" />
