@@ -7,7 +7,7 @@ class DataFormatter:
         self.data = data
 
 
-    def get_term_information(self):
+    def get_term_information(self, type):
         term_result = self.data
 
         results_list = []
@@ -21,7 +21,8 @@ class DataFormatter:
         short_form_key = "short_form"
         definition_key = "description"
         ancestors = "ancestors"
-        
+        hierarchicalDescendants = "hierarchicalDescendants"
+
 
         if label_key in keys:
             result_obj[label_key] = term_result[label_key]
@@ -35,7 +36,15 @@ class DataFormatter:
             result_obj[definition_key] = term_result[definition_key]
 
         # Get link for ancestors
-        result_obj[ancestors] = term_result['_links']['ancestors']['href']
+        if type == 'ancestors':
+            result_obj[ancestors] = term_result['_links']['ancestors']['href']
+        
+        # Get link for hierarchicalDescendants
+        if type == 'hierarchicalDescendants':
+            if 'hierarchicalDescendants' in term_result['_links'].keys():
+                result_obj[hierarchicalDescendants] = term_result['_links']['hierarchicalDescendants']['href']
+            else:
+                pass
 
         results_list.append(result_obj)
 
@@ -57,5 +66,35 @@ class DataFormatter:
             ancestor_labels.append(term['label'])
 
         return ancestor_labels
+
+
+
+    def get_hierarchicalDescendants_ids(self):
+        '''
+        Parse and return only term ids from the OLS "descendants" link.
+
+        '''
+
+        hierarchicalDescendants = self.data
+
+        hierarchicalDescendants_ids = []
+
+        for term in hierarchicalDescendants['_embedded']['terms']:
+            # TODO: Do not include ontology metadata 
+            # terms, e.g. Thing, disposition, experimental factor ontology
+            hierarchicalDescendants_ids.append(term['short_form'])
+
+        return hierarchicalDescendants_ids
+
+
+    def get_pages(self):
+        '''
+        Check number of pages of data.
+        '''
+        data = self.data
+
+        num_pages = data['page']['totalPages']
+
+        return num_pages
 
 
