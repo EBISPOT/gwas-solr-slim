@@ -186,7 +186,7 @@
   <field name="cytobands" type="text_general" indexed="true" stored="true" multiValued="false" />  
   <field name="biotype" type="text_general" indexed="true" stored="true" multiValued="false" />
   <field name="rsIDs" type="string" indexed="true" stored="true" multiValued="true" />
-  <field name="synonymsGene" type="text_general" indexed="true" stored="true" multiValued="false" />
+  <!-- <field name="synonymsGene" type="text_general" indexed="true" stored="true" multiValued="false" /> -->
   <field name="crossRefs" type="text_general" indexed="true" stored="true" multiValued="false" />
   <field name="chromosomeStart" type="int" indexed="true" stored="true" multiValued="false" />
   <field name="chromosomeEnd" type="int" indexed="true" stored="true" multiValued="false" />
