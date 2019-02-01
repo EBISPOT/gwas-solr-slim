@@ -263,7 +263,7 @@ class GeneAnnotator(object):
         # Adding entrez ID to the document:
         def add_HGNC_annot(gene, annot = {'entrez_id' : '', 'alternativeIDs': '', 'synonyms' : ''}):
             gene['crossRefs'] = annot['alternativeIDs']
-            gene['synonymsGene'] = annot['synonyms']    
+            # gene['synonymsGene'] = annot['synonyms']    
 
         def add_Ensembl_annot(gene, annot = {'start' : '', 'end' : '', 'seq_region_name': '',
                                             'biotype' : '', 'display_name' : '', 'description': ''}):
@@ -382,3 +382,4 @@ class GeneAnnotator(object):
         except:
             print("[Warning] Saving data has failed.")
             return(1)
+

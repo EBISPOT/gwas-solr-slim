@@ -2,6 +2,39 @@ import os.path
 import pandas as pd
 import pickle
 from tqdm import tqdm
+from document_types import gene_annotator
+
+def get_gene_data(connection, RESTURL, limit=0):
+    # Importing shell variables:
+    try:
+        HGNC_file = os.environ["HGNC_file"]
+    except:
+        raise(ValueError("[Error] \"HGNC_file\" shell variable is not defined."))
+
+    try:
+        EnsemblFtpPath = os.environ["EnsemblFtpPath"]
+    except:
+        raise(ValueError("[Error] \"EnsemblFtpPath\" shell variable is not defined."))
+
+    # Extract gene/mapping data from database:
+    geneSQL = gene_sql(connection=connection, test = False, limit = limit)
+    mappedGenes = geneSQL.get_results()
+    geneSQL.save_results('data/gene_mapping.pkl')
+    
+    # Initialize annotator object:
+    geneAnnotObj = gene_annotator.GeneAnnotator(verbose=1, RESTServer= RESTURL,
+                        EnsemblFtpPath=EnsemblFtpPath, HGNCFile=HGNC_file)
+    geneAnnotObj.save_data('data/gene_annotator.pkl')
+
+    # Reading the annotator from pickle, for testing:
+    #annotatorFile = 'gene_annotator.plk'
+    #with (open(annotatorFile, 'rb'))as f:
+    #    geneAnnotObj = pickle.load(f)
+
+    # Generating documents:
+    geneDocuments = geneAnnotObj.create_document(geneSQL.get_results())
+
+    return(geneDocuments)
 
 class gene_sql(object):
     '''

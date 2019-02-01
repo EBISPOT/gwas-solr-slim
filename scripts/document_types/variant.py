@@ -72,7 +72,7 @@ def get_variant_data(connection, limit=0):
         genes_str = ",".join(mapped_genes_names)
         varDoc['description'] =  "|".join([coordinates, 
             str(location['region']), consequence,genes_str])
-        print(varDoc)
+        
         # Adding to document list:
         all_variant_data.append(varDoc)
 
