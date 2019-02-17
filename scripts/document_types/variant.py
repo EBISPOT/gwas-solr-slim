@@ -57,19 +57,22 @@ def get_variant_data(connection, limit=0):
             'associationCount' : association_count,
             'studyCount' : study_count,
             'mappedGenes' : mapped_genes_list,
-            'chromosomeName' : location['chromosome'],
-            'chromosomePosition' : location['position'],
-            'region' : location['region'],
             'consequence' : consequence,
             'link' : 'variants/%s' % rsID
         }
 
+        # Adding only valid location indicated by integer position:
+        if isinstance(location['position'], int):
+            varDoc['chromosomeName'] = location['chromosome']
+            varDoc['chromosomePosition'] = location['position']
+            varDoc['region'] = location['region']
+
         # Adding description to the document:
-        coordinates = '%s:%s' %(varDoc['chromosomeName'], varDoc['chromosomePosition'])
+        coordinates = '%s:%s' %(location['chromosome'], location['position'])
         genes_str = ",".join(mapped_genes_names)
         varDoc['description'] =  "|".join([coordinates, 
-            str(varDoc['region']), consequence,genes_str])
-
+            str(location['region']), consequence,genes_str])
+        
         # Adding to document list:
         all_variant_data.append(varDoc)
 
@@ -121,7 +124,11 @@ class variant_sqls(object):
         SELECT G.GENE_NAME, GC.GENE_ID, GC.IS_DOWNSTREAM, GC.IS_UPSTREAM, GC.IS_INTERGENIC, GC.IS_CLOSEST_GENE, GC.DISTANCE,
           L.CHROMOSOME_NAME as CHR, L.CHROMOSOME_POSITION as POS
         FROM GENOMIC_CONTEXT GC, GENE G, LOCATION L
-        WHERE  GC.SNP_ID = :SNP_ID AND G.ID = GC.GENE_ID AND L.ID = GC.LOCATION_ID AND length(L.CHROMOSOME_NAME) < 3
+        WHERE  GC.SNP_ID = :SNP_ID 
+            AND G.ID = GC.GENE_ID 
+            AND L.ID = GC.LOCATION_ID 
+            AND length(L.CHROMOSOME_NAME) < 3
+            AND GC.SOURCE = 'Ensembl'
     """
 
     association_count_sql = """
@@ -169,6 +176,11 @@ class variant_sqls(object):
             location['chromosome'] = location_df['CHROMOSOME_NAME'].tolist()[0]
             location['position'] = location_df['CHROMOSOME_POSITION'].tolist()[0]
             location['region'] = location_df['NAME'].tolist()[0]
+
+        try:
+            location['position'] = int(location['position'])
+        except:
+            location['position'] = location['position']
 
         return(location)
 

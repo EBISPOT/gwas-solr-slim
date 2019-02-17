@@ -126,7 +126,7 @@
   <!--specific fields for Publication -->
   <field name="pmid" type="string" indexed="true" stored="true" multiValued="false" />
   <field name="journal" type="string" indexed="true" stored="true" multiValued="false" />
-  <field name="publicationDate" type="text_general" indexed="true" stored="true" />
+  <field name="publicationDate" type="string" indexed="true" stored="true" />
   <field name="author" type="text_general" indexed="true" stored="true" multiValued="true" />
   <field name="author_s" type="text_general" indexed="true" stored="true" multiValued="false" />
   <field name="authorAscii" type="text_general" indexed="true" stored="true" multiValued="true" />
@@ -142,7 +142,7 @@
   <!-- <field name="ancestralGroups" type="text_general" indexed="true" stored="true" multiValued="false" /> -->
   <field name="parentDocument_accessionId" type="text_general" indexed="true" stored="true" multiValued="true" />
   <field name="parentDocument_ancestralGroups" type="text_general" indexed="true" stored="true" multiValued="true" />
-  <field name='genotypingTechnologies' type="text_general" indexed="true" stored="true" multiValued="true" />
+  <field name="genotypingTechnologies" type="text_general" indexed="true" stored="true" multiValued="true" />
   <field name="fullPvalueSet" type="boolean" indexed="true" stored="true" multiValued="false" />
 
 
@@ -160,7 +160,6 @@
   <field name="synonyms" type="string" indexed="true" stored="true" multiValued="true" />
   <field name="mappedLabel" type="text_general" indexed="true" stored="true" multiValued="false" />
   <field name="mappedTrait" type="text_general" indexed="true" stored="true" multiValued="false" />
-
   <field name="efoLink" type="text_general" indexed="true" stored="true" multiValued="true" />
 
   <!-- <field name="shortform_autosuggest" type="text_general" indexed="true" stored="true" multiValued="true" />
@@ -172,9 +171,9 @@
   <field name="synonym_autosuggest_e" type="text_general" indexed="true" stored="true" multiValued="true" /> -->
 
   <!-- specific fields for Variant -->
-    <field name="consequence" type="text_general" indexed="true" stored="true" multiValued="false" />
+  <field name="consequence" type="text_general" indexed="true" stored="true" multiValued="false" />
   <field name="chromosomeName" type="text_general" indexed="true" stored="true" multiValued="false" />
-  <field name="chromosomePosition" type="text_general" indexed="true" stored="true" multiValued="false" />
+  <field name="chromosomePosition" type="int" indexed="true" stored="true" multiValued="false" />
   <field name="region" type="text_general" indexed="true" stored="true" multiValued="false" />
   <field name="mappedGenes" type="string" indexed="true" stored="true" multiValued="true" />
   <field name="rsID" type="text_general" indexed="true" stored="true" multiValued="false" />
@@ -182,18 +181,16 @@
   <field name="merged_rsID" type="text_general" indexed="true" stored="true" multiValued="false" />
 
   <!-- specific fields for Gene -->
-  <!-- <field name="reported_trait" type="text_general" indexed="true" stored="true" multiValued="false" /> -->
-  <field name="geneDescription" type="text_general" indexed="false" stored="true" multiValued="false" />
-  <field name="ensemblID" type="string" indexed="true" stored="true" multiValued="false" />
-  <field name="geneName" type="string" indexed="true" stored="true" multiValued="false" />
-  <field name="synonymsGene" type="text_general" indexed="true" stored="true" multiValued="false" />  
+  <field name="ensemblDescription" type="string" indexed="true" stored="true" multiValued="false" />
+  <field name="entrez_id" type="string" indexed="true" stored="true" multiValued="false" />
+  <field name="cytobands" type="text_general" indexed="true" stored="true" multiValued="false" />  
   <field name="biotype" type="text_general" indexed="true" stored="true" multiValued="false" />
-  <field name="variants" type="string" indexed="true" stored="true" multiValued="true" />
-
-  <field name="mapping" type="text_general" indexed="true" stored="true" multiValued="true" />  
-  <field name="mapping.chr" type="text_general" indexed="true" stored="true" multiValued="false" />  
-  <field name="mapping.start" type="int" indexed="true" stored="true" multiValued="false" />  
-  <field name="mapping.end" type="int" indexed="true" stored="true" multiValued="false" />  
+  <field name="rsIDs" type="string" indexed="true" stored="true" multiValued="true" />
+  <!-- <field name="synonymsGene" type="text_general" indexed="true" stored="true" multiValued="false" /> -->
+  <field name="crossRefs" type="text_general" indexed="true" stored="true" multiValued="false" />
+  <field name="chromosomeStart" type="int" indexed="true" stored="true" multiValued="false" />
+  <field name="chromosomeEnd" type="int" indexed="true" stored="true" multiValued="false" />
+  <field name="ensemblID" type="string" indexed="true" stored="true" multiValued="false" />
 
     <!-- Main body of document extracted by SolrCell.
          NOTE: This field is not indexed by default, since it is also copied to "text"
@@ -291,10 +288,14 @@
     <copyField source="author" dest="text" />
 
     <!-- Copying fields from the gene documents -->
-    <copyField source="ensemblID" dest="text" />
-    <copyField source="geneName" dest="text"  />
-    <copyField source="synonymsGene" dest="text" />
-
+    <copyField source="ensemblID" dest="text" /> 
+    <!-- <copyField source="synonymsGene" dest="text" /> -->
+    <copyField source="cytobands" dest="text" />
+    <copyField source="synonyms" dest="text" />    
+    <copyField source="rsIDs" dest="text" />
+    <copyField source="crossRefs" dest="text" />
+    <copyField source="ensemblDescription" dest="text" />
+    
     <!-- Copying fields from the variant documents -->
     <copyField source="rsID" dest="text" />
     <copyField source="mappedGenes" dest="text"  />

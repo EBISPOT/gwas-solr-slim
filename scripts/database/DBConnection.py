@@ -17,10 +17,10 @@ class gwasCatalogDbConnector(object):
             dsn_tns = cx_Oracle.makedsn(ip, port, sid)
             self.connection = cx_Oracle.connect(username, password, dsn_tns)
             self.cursor = self.connection.cursor()
-            print "[INFO] Database connection successful"
+            print ("[INFO] Database connection successful")
 
-        except cx_Oracle.DatabaseError, exception:
-            print exception
+        except (cx_Oracle.DatabaseError, exception):
+            print (exception)
 
     def close(self):
         self.connection.close()
