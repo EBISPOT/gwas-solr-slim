@@ -88,7 +88,7 @@ def save_data(data, data_type=None):
         outfile.write(jsonData)
 
 def variant_data(connection, limit=0, test=False):
-    return variant.get_variant_data(connection, limit, test)
+    return variant.get_variant_data(connection, limit, testRun = test)
 
 def gene_data(connection, limit=0, test=False):
     return gene.get_gene_data(connection, RESTURL, limit)

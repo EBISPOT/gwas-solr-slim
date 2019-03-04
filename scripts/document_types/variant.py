@@ -2,7 +2,7 @@
 import pandas as pd
 from tqdm import tqdm
 
-def get_variant_data(connection, limit=0, test = False):
+def get_variant_data(connection, limit=0, testRun = False):
     '''
     Get Variant data for Solr document.
     '''
@@ -65,7 +65,6 @@ def get_variant_data(connection, limit=0, test = False):
             'studyCount' : study_count,
             'mappedGenes' : mapped_genes_list,
             'consequence' : consequence,
-            'link' : 'variants/%s' % rsID
         }
 
         # Adding only valid location indicated by integer position:
@@ -98,7 +97,7 @@ def get_variant_data(connection, limit=0, test = False):
     # Step 3: Calling apply to retrieve all variant data:
     if limit != 0:
         variants_df[0:limit].progress_apply(get_more_variant_data, axis = 1)
-    elif test:
+    elif testRun:
         variants_df[variants_df['ID'].isin(testAssociationId)].progress_apply(get_more_variant_data, axis = 1)
     else:
         variants_df.progress_apply(get_more_variant_data, axis = 1)
