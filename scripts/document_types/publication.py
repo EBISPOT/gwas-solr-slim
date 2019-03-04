@@ -11,10 +11,17 @@ import os.path
 # import gwas_data_sources
 
 
-def get_publication_data(connection, limit=0):
+def get_publication_data(connection, limit=0, testRun = False):
     '''
     Get Publication data for Solr document.
     '''
+
+    # List of PMIDs of publications that are special in some way (as string!):
+    testPmidSet = [
+        '22569225', # Special character in title
+        '27911795', # Special character in title
+        '29309628'  # Special non-printed character in title
+    ]
 
     # List of queries
     publication_sql = """
@@ -103,6 +110,10 @@ def get_publication_data(connection, limit=0):
             publication_data = cursor.fetchall()
 
             for publication in tqdm(publication_data, desc='Get Publication data'):  # noqa
+
+                # If a test run is called, skip all publications except which are listed in the test set:
+                if testRun and not publication[1] in testPmidSet: continue 
+
                 publication = list(publication)
 
                 publication_document = {}
