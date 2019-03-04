@@ -4,7 +4,7 @@ import pickle
 from tqdm import tqdm
 from document_types import gene_annotator
 
-def get_gene_data(connection, RESTURL, limit=0):
+def get_gene_data(connection, RESTURL, limit=0, testRun = False):
     # Importing shell variables:
     try:
         HGNC_file = os.environ["HGNC_file"]
@@ -17,7 +17,7 @@ def get_gene_data(connection, RESTURL, limit=0):
         raise(ValueError("[Error] \"EnsemblFtpPath\" shell variable is not defined."))
 
     # Extract gene/mapping data from database:
-    geneSQL = gene_sql(connection=connection, test = False, limit = limit)
+    geneSQL = gene_sql(connection=connection, testRun = testRun, limit = limit)
     mappedGenes = geneSQL.get_results()
     geneSQL.save_results('data/gene_mapping.pkl')
     
@@ -62,6 +62,7 @@ class gene_sql(object):
           OR SNP.RS_ID = 'rs7302200'
           OR SNP.RS_ID = 'rs890076'
           OR SNP.RS_ID = 'rs116175783'
+          OR SNP.RS_ID = 'rs204888'
         )
           AND SNP.ID = ASV.SNP_ID
           AND ASV.ASSOCIATION_ID = A.ID
@@ -100,7 +101,7 @@ class gene_sql(object):
           AND GEG.ENSEMBL_GENE_ID = EG.ID
     '''
     
-    def __init__(self, connection, limit = 0, test = False):
+    def __init__(self, connection, limit = 0, testRun = False):
 
         # Initialize return variables:
         self.gene_container = {}
@@ -111,12 +112,13 @@ class gene_sql(object):
           test = True
 
         # We extract the list of studies and associations:
-        if test:
+        if testRun:
             self.association_df = pd.read_sql(self.sql_test_query, self.connection)
         else:
             self.association_df = pd.read_sql(self.sql_associatinos_studies, self.connection)
                 
         tqdm.pandas(desc="Extracting mapped genes...")
+        
         # Looping through all associations and return genomic context:
         if limit != None:
             x = self.association_df.sample(n = limit).progress_apply(self.__process_association_row, axis = 1)

@@ -91,7 +91,7 @@ def variant_data(connection, limit=0, test=False):
     return variant.get_variant_data(connection, limit)
 
 def gene_data(connection, limit=0, test=False):
-    return gene.get_gene_data(connection, RESTURL, limit)
+    return gene.get_gene_data(connection, RESTURL, limit, testRun = test)
 
 if __name__ == '__main__':
     '''
