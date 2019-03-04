@@ -55,6 +55,7 @@ class OLSData:
         '''
 
         OLS_ANCESTOR_URL = self.term_iri
+        no_results = {'iri': None, 'synonyms': None, 'short_form': None, 'label': None, 'description': None}
 
         no_ancestor_results = []
 
@@ -84,6 +85,8 @@ class OLSData:
         Use OLS to get hierarchicalDescendants for a term. NOTE: This link is from the "descendants"
         web service and is already URL double-encoded.
         '''
+
+        no_results = {'iri': None, 'synonyms': None, 'short_form': None, 'label': None, 'description': None}
 
         OLS_DESCENDANT_URL = self.term_iri+"?size=1000&page={}".format(page)
 
@@ -124,6 +127,8 @@ class OLSData:
         Get pages of data.
         '''
 
+        no_results = {'iri': None, 'synonyms': None, 'short_form': None, 'label': None, 'description': None}
+        
         OLS_DESCENDANT_URL = self.term_iri+"?size=1000&page={}".format(page)
 
         try:
