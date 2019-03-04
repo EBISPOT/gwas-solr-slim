@@ -40,6 +40,26 @@ class gene_sql(object):
     '''
     A class to extract gene related data from the database
     '''
+
+    # Test cases, rsIDs where the generation of the gene document might be complicated:
+    testRsIds = [
+        'rs11352199',
+        'rs558163981',
+        'rs4767902',
+        'rs2739472',
+        'rs4622308',
+        'rs2292239',
+        'rs11171739',
+        'rs34379766',
+        'rs10783779',
+        'rs877636',
+        'rs12580100',
+        'rs7312770',
+        'rs7302200',
+        'rs890076',
+        'rs116175783',
+        'rs204888', # Document of the mapped gene is missing from the slim solr..
+    ]
     
     # Extract associations for DYNLL1 (as a test suite):
     sql_test_query = '''SELECT A.ID as ASSOCIATION_ID, A.STUDY_ID, SNP.RS_ID
@@ -47,23 +67,7 @@ class gene_sql(object):
           ASSOCIATION_SNP_VIEW ASV,
           SINGLE_NUCLEOTIDE_POLYMORPHISM SNP
         WHERE
-          (SNP.RS_ID = 'rs11352199'
-          OR SNP.RS_ID = 'rs558163981'
-          OR SNP.RS_ID = 'rs4767902'
-          OR SNP.RS_ID = 'rs2739472'
-          OR SNP.RS_ID = 'rs4622308'
-          OR SNP.RS_ID = 'rs2292239'
-          OR SNP.RS_ID = 'rs11171739'
-          OR SNP.RS_ID = 'rs34379766'
-          OR SNP.RS_ID = 'rs10783779'
-          OR SNP.RS_ID = 'rs877636'
-          OR SNP.RS_ID = 'rs12580100'
-          OR SNP.RS_ID = 'rs7312770'
-          OR SNP.RS_ID = 'rs7302200'
-          OR SNP.RS_ID = 'rs890076'
-          OR SNP.RS_ID = 'rs116175783'
-          OR SNP.RS_ID = 'rs204888'
-        )
+          SNP.RS_ID IN (%s)
           AND SNP.ID = ASV.SNP_ID
           AND ASV.ASSOCIATION_ID = A.ID
     '''
@@ -113,7 +117,8 @@ class gene_sql(object):
 
         # We extract the list of studies and associations:
         if testRun:
-            self.association_df = pd.read_sql(self.sql_test_query, self.connection)
+            in_vars = ','.join(':%d' % i for i in range(len(self.testRsIds)))
+            self.association_df = pd.read_sql(self.sql_test_query % in_vars, self.connection, params = self.testRsIds)
         else:
             self.association_df = pd.read_sql(self.sql_associatinos_studies, self.connection)
                 
