@@ -15,7 +15,7 @@ class gwasCatalogDbConnector(object):
         try:
             ip, port, sid, username, password = gwas_data_sources.get_db_properties(self.database_name) # noqa
             dsn_tns = cx_Oracle.makedsn(ip, port, sid)
-            self.connection = cx_Oracle.connect(username, password, dsn_tns)
+            self.connection = cx_Oracle.connect(username, password, dsn_tns, encoding='UTF-8', nencoding='UTF-8')
             self.cursor = self.connection.cursor()
             print ("[INFO] Database connection successful")
 

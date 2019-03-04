@@ -19,13 +19,13 @@ from document_types import variant
 from document_types import gene
 from document_types import gene_annotator
 
-def publication_data(connection, limit=0):
-    return publication.get_publication_data(connection)
+def publication_data(connection, limit=0, test=False):
+    return publication.get_publication_data(connection, testRun = test)
 
-def trait_data(connection, limit=0):
+def trait_data(connection, limit=0, test=False):
     return trait.get_trait_data(connection)
 
-def study_data(connection, limit=0):
+def study_data(connection, limit=0, test=False):
     return study.get_study_data(connection)
 
 def check_data(data, doctype):
@@ -87,10 +87,10 @@ def save_data(data, data_type=None):
     with open(path, 'w') as outfile:
         outfile.write(jsonData)
 
-def variant_data(connection, limit=0):
+def variant_data(connection, limit=0, test=False):
     return variant.get_variant_data(connection, limit)
 
-def gene_data(connection, limit=0):
+def gene_data(connection, limit=0, test=False):
     return gene.get_gene_data(connection, RESTURL, limit)
 
 if __name__ == '__main__':
@@ -106,13 +106,15 @@ if __name__ == '__main__':
     parser.add_argument('--document', default='publication',
                         choices=['publication', 'trait', 'variant', 'gene', 'all'],
                         help='Run as (default: publication).')
-    parser.add_argument('--restURL', default = 'https://jul2018.rest.ensembl.org', help = 'URL of Ensembl REST API. Determines which Ensembl release will be used.')
+    parser.add_argument('--restURL', default = 'https://rest.ensembl.org', help = 'URL of Ensembl REST API. Determines which Ensembl release will be used.')
+    parser.add_argument('--test', help = 'Generate ducments on a test set. (needs to be implemented to each document types1!)', action = 'store_true', default=False)
     args = parser.parse_args()
 
     global DATABASE_NAME
     DATABASE_NAME = args.database
 
     limit = args.limit
+    test = args.test
 
     global RESTURL  
     RESTURL = args.restURL
@@ -138,7 +140,7 @@ if __name__ == '__main__':
 
     # Loop through all the document types and generate document
     for doc in documents:
-        document_data = dispatcher[doc](db_object.connection, limit)
+        document_data = dispatcher[doc](db_object.connection, limit, test)
         document_data = check_data(document_data, doc)
         # save_data(document_data, docfileSuffix)
         save_data(document_data)
