@@ -2,13 +2,20 @@
 import pandas as pd
 from tqdm import tqdm
 
-def get_variant_data(connection, limit=0):
+def get_variant_data(connection, limit=0, test = False):
     '''
     Get Variant data for Solr document.
     '''
 
+    # Special variant IDs that represent 
+    testAssociationId = [
+        42893, # Missing from solr slim
+        47195, # kgp ID
+    ]
+
     # function to retrieve further data from the database:
     def get_more_variant_data(row):
+
         # Extracting basic variant information:
         resourcename = 'variant'
         ID = row['ID']
@@ -90,7 +97,9 @@ def get_variant_data(connection, limit=0):
 
     # Step 3: Calling apply to retrieve all variant data:
     if limit != 0:
-        variants_df[1:limit].progress_apply(get_more_variant_data, axis = 1)
+        variants_df[0:limit].progress_apply(get_more_variant_data, axis = 1)
+    elif test:
+        variants_df[variants_df['ID'].isin(testAssociationId)].progress_apply(get_more_variant_data, axis = 1)
     else:
         variants_df.progress_apply(get_more_variant_data, axis = 1)
 
