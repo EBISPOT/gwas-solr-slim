@@ -321,6 +321,7 @@ class GeneAnnotator(object):
                     add_Ensembl_annot(gene, missing_annotation[gene_ID])
                 except:
                     print("[Warning] Ensembl annotation has failed for %s" % gene_ID)
+                    continue
 
             # Keeping only genes that are mapped to the chromosomes. Patches are excluded.
             if len(gene['chromosomeName']) > 2 : 

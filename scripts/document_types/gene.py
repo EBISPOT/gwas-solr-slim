@@ -4,7 +4,7 @@ import pickle
 from tqdm import tqdm
 from document_types import gene_annotator
 
-def get_gene_data(connection, RESTURL, limit=0):
+def get_gene_data(connection, RESTURL, limit=0, testRun = False):
     # Importing shell variables:
     try:
         HGNC_file = os.environ["HGNC_file"]
@@ -17,7 +17,7 @@ def get_gene_data(connection, RESTURL, limit=0):
         raise(ValueError("[Error] \"EnsemblFtpPath\" shell variable is not defined."))
 
     # Extract gene/mapping data from database:
-    geneSQL = gene_sql(connection=connection, test = False, limit = limit)
+    geneSQL = gene_sql(connection=connection, testRun = testRun, limit = limit)
     mappedGenes = geneSQL.get_results()
     geneSQL.save_results('data/gene_mapping.pkl')
     
@@ -40,6 +40,26 @@ class gene_sql(object):
     '''
     A class to extract gene related data from the database
     '''
+
+    # Test cases, rsIDs where the generation of the gene document might be complicated:
+    testRsIds = [
+        'rs11352199',
+        'rs558163981',
+        'rs4767902',
+        'rs2739472',
+        'rs4622308',
+        'rs2292239',
+        'rs11171739',
+        'rs34379766',
+        'rs10783779',
+        'rs877636',
+        'rs12580100',
+        'rs7312770',
+        'rs7302200',
+        'rs890076',
+        'rs116175783',
+        'rs204888', # Document of the mapped gene is missing from the slim solr..
+    ]
     
     # Extract associations for DYNLL1 (as a test suite):
     sql_test_query = '''SELECT A.ID as ASSOCIATION_ID, A.STUDY_ID, SNP.RS_ID
@@ -47,22 +67,7 @@ class gene_sql(object):
           ASSOCIATION_SNP_VIEW ASV,
           SINGLE_NUCLEOTIDE_POLYMORPHISM SNP
         WHERE
-          (SNP.RS_ID = 'rs11352199'
-          OR SNP.RS_ID = 'rs558163981'
-          OR SNP.RS_ID = 'rs4767902'
-          OR SNP.RS_ID = 'rs2739472'
-          OR SNP.RS_ID = 'rs4622308'
-          OR SNP.RS_ID = 'rs2292239'
-          OR SNP.RS_ID = 'rs11171739'
-          OR SNP.RS_ID = 'rs34379766'
-          OR SNP.RS_ID = 'rs10783779'
-          OR SNP.RS_ID = 'rs877636'
-          OR SNP.RS_ID = 'rs12580100'
-          OR SNP.RS_ID = 'rs7312770'
-          OR SNP.RS_ID = 'rs7302200'
-          OR SNP.RS_ID = 'rs890076'
-          OR SNP.RS_ID = 'rs116175783'
-        )
+          SNP.RS_ID IN (%s)
           AND SNP.ID = ASV.SNP_ID
           AND ASV.ASSOCIATION_ID = A.ID
     '''
@@ -100,7 +105,7 @@ class gene_sql(object):
           AND GEG.ENSEMBL_GENE_ID = EG.ID
     '''
     
-    def __init__(self, connection, limit = 0, test = False):
+    def __init__(self, connection, limit = 0, testRun = False):
 
         # Initialize return variables:
         self.gene_container = {}
@@ -111,12 +116,14 @@ class gene_sql(object):
           test = True
 
         # We extract the list of studies and associations:
-        if test:
-            self.association_df = pd.read_sql(self.sql_test_query, self.connection)
+        if testRun:
+            in_vars = ','.join(':%d' % i for i in range(len(self.testRsIds)))
+            self.association_df = pd.read_sql(self.sql_test_query % in_vars, self.connection, params = self.testRsIds)
         else:
             self.association_df = pd.read_sql(self.sql_associatinos_studies, self.connection)
                 
         tqdm.pandas(desc="Extracting mapped genes...")
+        
         # Looping through all associations and return genomic context:
         if limit != None:
             x = self.association_df.sample(n = limit).progress_apply(self.__process_association_row, axis = 1)
