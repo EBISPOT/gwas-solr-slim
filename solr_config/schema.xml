@@ -113,7 +113,6 @@
   <field name="description" type="text_general" indexed="false" stored="true" multiValued="false" />
   <field name="id" type="string" indexed="true" stored="true" required="true" multiValued="false" />
   <field name="title" type="text_general" indexed="true" stored="true" multiValued="false" />
-  <field name="link" type="text_general" indexed="false" stored="true" multiValued="false" />
 
   <!-- Commonly used, but not mandatory fields shared by many document types -->
   <field name="associationCount" type="int" indexed="false" stored="true" multiValued="false" />

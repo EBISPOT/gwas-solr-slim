@@ -88,7 +88,7 @@ def save_data(data, data_type=None):
         outfile.write(jsonData)
 
 def variant_data(connection, limit=0, test=False):
-    return variant.get_variant_data(connection, limit)
+    return variant.get_variant_data(connection, limit, testRun = test)
 
 def gene_data(connection, limit=0, test=False):
     return gene.get_gene_data(connection, RESTURL, limit, testRun = test)
@@ -102,7 +102,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--database', default='SPOTREL', choices=['DEV3', 'SPOTREL'],
                         help='Run as (default: SPOTREL).')
-    parser.add_argument('--limit', type=int, help='Limit the number of created documents to this number for testing purposes.')
+    parser.add_argument('--limit', type=int, help='Limit the number of created documents to this number for testing purposes.', default = 0)
     parser.add_argument('--document', default='publication',
                         choices=['publication', 'trait', 'variant', 'gene', 'all'],
                         help='Run as (default: publication).')
