@@ -17,10 +17,14 @@ def get_gene_data(connection, RESTURL, limit=0, testRun = False):
         raise(ValueError("[Error] \"EnsemblFtpPath\" shell variable is not defined."))
 
     # Extract gene/mapping data from database:
-    geneSQL = gene_sql(connection=connection, testRun = testRun, limit = limit)
-    mappedGenes = geneSQL.get_results()
-    geneSQL.save_results('data/gene_mapping.pkl')
+    #geneSQL = gene_sql(connection=connection, testRun = testRun, limit = limit)
+    #geneSQL.save_results('data/gene_mapping.pkl')
     
+    #mappedGenes = geneSQL.get_results()
+    mappedPickleFile = 'data/gene_mapping.pkl'
+    with (open(mappedPickleFile, 'rb'))as f:
+        mappedGenes = pickle.load(f)
+
     # Initialize annotator object:
     geneAnnotObj = gene_annotator.GeneAnnotator(verbose=1, RESTServer= RESTURL,
                         EnsemblFtpPath=EnsemblFtpPath, HGNCFile=HGNC_file)
@@ -32,7 +36,7 @@ def get_gene_data(connection, RESTURL, limit=0, testRun = False):
     #    geneAnnotObj = pickle.load(f)
 
     # Generating documents:
-    geneDocuments = geneAnnotObj.create_document(geneSQL.get_results())
+    geneDocuments = geneAnnotObj.create_document(mappedGenes)
 
     return(geneDocuments)
 
@@ -121,11 +125,12 @@ class gene_sql(object):
             self.association_df = pd.read_sql(self.sql_test_query % in_vars, self.connection, params = self.testRsIds)
         else:
             self.association_df = pd.read_sql(self.sql_associatinos_studies, self.connection)
+            print(len(self.association_df))
                 
         tqdm.pandas(desc="Extracting mapped genes...")
         
         # Looping through all associations and return genomic context:
-        if limit != None:
+        if limit != 0:
             x = self.association_df.sample(n = limit).progress_apply(self.__process_association_row, axis = 1)
         else:
             x = self.association_df.progress_apply(self.__process_association_row, axis = 1)

@@ -191,6 +191,10 @@
   <field name="chromosomeEnd" type="int" indexed="true" stored="true" multiValued="false" />
   <field name="ensemblID" type="string" indexed="true" stored="true" multiValued="false" />
 
+
+<!-- Test key -->
+  <field name="pocok" type="string" indexed="true" stored="true" multiValued="false" />
+
     <!-- Main body of document extracted by SolrCell.
          NOTE: This field is not indexed by default, since it is also copied to "text"
          using copyField below. This is to save space. Use this field for returning and

@@ -79,7 +79,7 @@ def save_data(data, data_type=None):
     my_path = os.path.abspath(os.path.dirname(__file__))
 
     current_dir = os.getcwd()
-    path = os.path.join(current_dir, "data/%s_data.json" % (resourcename))
+    path = os.path.join(current_dir, "%s_data.json" % (resourcename))
 
 
     # path = os.path.join(my_path, "data/%s_data_%s.json" % (resourcename, docfileSuffix))

@@ -14,6 +14,7 @@ class REST(object):
 
     def __init__(self, URL):
         self.URL = URL
+        print("Cica")
 
     # https://rest.ensembl.org/info/data/?content-type=application/json
     def getEnsemblRelease(self):
