@@ -4,9 +4,9 @@
 scriptDir="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 
 # List of document types:
-# docTypes=("variant" "publication" "trait" "gene")
+docTypes=("variant" "publication" "trait" "gene")
 # docTypes=("variant" "gene")
-docTypes=("publication" "trait")
+# docTypes=("publication" "trait")
 
 ##
 ## Functions
