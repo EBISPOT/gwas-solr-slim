@@ -82,7 +82,8 @@ def validateDocument(schema, documentFile):
 
         print("[Info] Field names successfully validated for {}".format(documentFile))
         return(1)
-        
+
+        # TODO: implement validation of each document:        
         # Validate every rows for each columns
         # Is the type good?
         # Is the field multivalued?
@@ -145,17 +146,16 @@ if __name__ == '__main__':
     solrObj.wipeCore()
     
     # If data directory and new schema file are both given, update schema file:
-    if schemaFile and dataFolder:
-        print("[Info] Updating schema file.")
-        try:
-            shutil.copyfile(schemaFile, '{}/{}/conf/schema.xml'.format(dataFolder, core))
-        except Exception as e:
-            print(e)
-            print("[Error] Copying schema file failed.")
-            sys.exit(1)
+    print("[Info] Updating schema file.")
+    try:
+        shutil.copyfile(schemaFile, '{}/{}/conf/schema.xml'.format(dataFolder, core))
+    except Exception as e:
+        print(e)
+        print("[Error] Copying schema file failed.")
+        sys.exit(1)
         
-        # Reload core:
-        solrObj.reloadCore()
+    # Reload core:
+    solrObj.reloadCore()
 
     # Get schema from the running instance:
     solrSchema = solrObj.getSchema()

@@ -126,7 +126,6 @@ class gene_sql(object):
             self.association_df = pd.read_sql(self.sql_test_query % in_vars, self.connection, params = self.testRsIds)
         else:
             self.association_df = pd.read_sql(self.sql_associatinos_studies, self.connection)
-            print(len(self.association_df))
                 
         tqdm.pandas(desc="Extracting mapped genes...")
         

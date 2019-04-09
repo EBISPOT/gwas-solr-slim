@@ -1,5 +1,12 @@
 #!/usr/bin/env bash
 
+##
+## Wrapper to generate slim solr documents on the farm
+## Jobs are executed parallel, but this script keeps running till the last job is finished.
+## Once jobs are done, the script checks if it the execution was successful or not.
+##
+
+
 # Get scrit directory:
 scriptDir="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 
@@ -33,12 +40,11 @@ function display_help(){
 }
 
 ##
-## Advanced wrapper for generating slim documents:
+## Parsing command line options:
 ## 
 OPTIND=1
-while getopts "fhtd:l:b:w" opt; do
+while getopts "htd:l:b:" opt; do
     case "$opt" in
-        "f" ) farm=1 ;;
         "d" ) targetDir="${OPTARG}" ;;
         "l" ) limit="${OPTARG}" ;;
         "b" ) database="${OPTARG}" ;;
@@ -57,7 +63,7 @@ if [[ -z "${targetDir}" ]]; then
 elif [[ ! -d "${targetDir}" ]]; then
     display_help "[Error] A valid directory for output files needs to be specified. Exiting."
 else
-    # Preparing output directory:
+    # Preparing/cleaning output directory:
     targetDir=$(readlink -f $targetDir)
     mkdir -p "${targetDir}/data"
     mkdir -p "${targetDir}/logs"
