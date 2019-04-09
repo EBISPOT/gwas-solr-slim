@@ -4,7 +4,9 @@
 scriptDir="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 
 # List of document types:
-docTypes=("variant" "publication" "trait" "gene")
+# docTypes=("variant" "publication" "trait" "gene")
+# docTypes=("variant" "gene")
+docTypes=("publication" "trait")
 
 ##
 ## Functions
@@ -100,41 +102,44 @@ for document in ${docTypes[*]}; do
                  -J generate_${document} \
                  -o ${targetDir}/logs/generate_${document}.o \
                  -e ${targetDir}/logs/generate_${document}.e \
-                 "${PythonCommand} --document ${docType}" | perl -lane '($id) = $_ =~ /Job <(\d+)>/; print $id' )
+                 "${PythonCommand} --document ${document}" | perl -lane '($id) = $_ =~ /Job <(\d+)>/; print $id' )
     jobIDs[$document]=${jobID}
-    echo "[Info] ${document} generation is submitted to farm."
+    echo "[Info] ${document} generation is submitted to farm (job ID: ${jobID})."
 done
 
 ##
 ## Every 15 minutes we check all the running jobs to see if they are still running:
 ##
 finishedJob=0
-while [[ running -ne ${#docTypes[@]} ]]; do
+while [[ finishedJob -ne ${#docTypes[@]} ]]; do
     for document in ${!jobIDs[@]}; do 
-        isRunnning=$(bjobs -a ${jobIDs[$document]} | tail -n1 | awk '{if($3 != "PEND" && $3 != "RUN"){ print 1 } else {print 0}}')
+        isRunnning=$(bjobs -a ${jobIDs[${document}]} | tail -n1 | awk '{if($3 != "PEND" && $3 != "RUN"){ print 1 } else {print 0}}')
         if [[ $isRunnning -eq 1 ]]; then 
             finishedJob=$(( $finishedJob + 1 ));
+            echo "[Info] Generation of ${document} (job ID: ${jobIDs[${document}]}) is completed."
             unset jobIDs[$document]
-            echo "[Info] Generation of ${document} (job ID: ${jobIDs[$document]}) is completed."
         fi
     done
-    sleep 10s
+    sleep 15m
 done
 echo "[Info] All jobs finished."
 
 ##
 ## Testing if the jobs finished with success
 ##
+failed=0
 for document in ${docTypes[*]}; do 
+    if [[ -z $( grep "Successfully completed" "${targetDir}/logs/generate_${document}.o" ) ]]; then 
+        echo "[Warning] Generation of $document failed." 
+        failed=1
+    fi
+done
 
-
-
-
-
-
-
-
-
-
-
+if [[ $failed -ne 0 ]]; then
+    echo "[Error] At least one of the documents failed. Exiting."
+    exit 1
+else
+    echo "[Info] Documents successfully generated. Exiting."
+    exit 0
+fi
 

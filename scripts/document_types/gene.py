@@ -17,23 +17,24 @@ def get_gene_data(connection, RESTURL, limit=0, testRun = False):
         raise(ValueError("[Error] \"EnsemblFtpPath\" shell variable is not defined."))
 
     # Extract gene/mapping data from database:
-    #geneSQL = gene_sql(connection=connection, testRun = testRun, limit = limit)
-    #geneSQL.save_results('data/gene_mapping.pkl')
+    geneSQL = gene_sql(connection=connection, testRun = testRun, limit = limit)
+    mappedGenes = geneSQL.get_results()
     
-    #mappedGenes = geneSQL.get_results()
-    mappedPickleFile = 'data/gene_mapping.pkl'
-    with (open(mappedPickleFile, 'rb'))as f:
-        mappedGenes = pickle.load(f)
+    ## For testing purposes the mapped genes and variants can be serialized:
+    # geneSQL.save_results('data/gene_mapping.pkl')
+    # mappedPickleFile = 'data/gene_mapping.pkl'
+    # with (open(mappedPickleFile, 'rb'))as f:
+    #     mappedGenes = pickle.load(f)
 
     # Initialize annotator object:
     geneAnnotObj = gene_annotator.GeneAnnotator(verbose=1, RESTServer= RESTURL,
                         EnsemblFtpPath=EnsemblFtpPath, HGNCFile=HGNC_file)
-    geneAnnotObj.save_data('data/gene_annotator.pkl')
 
-    # Reading the annotator from pickle, for testing:
-    #annotatorFile = 'gene_annotator.plk'
-    #with (open(annotatorFile, 'rb'))as f:
-    #    geneAnnotObj = pickle.load(f)
+    ## For testing purposes the annotator object can be serialized and re-loaded:
+    # geneAnnotObj.save_data('data/gene_annotator.pkl')
+    # annotatorFile = 'gene_annotator.plk'
+    # with (open(annotatorFile, 'rb'))as f:
+    #     geneAnnotObj = pickle.load(f)
 
     # Generating documents:
     geneDocuments = geneAnnotObj.create_document(mappedGenes)

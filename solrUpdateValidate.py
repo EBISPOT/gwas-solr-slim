@@ -45,13 +45,12 @@ class solr(object):
             print('[Info] Solr server ({}) is up and running.'.format(self.base_url))
         else:
             print('[Error] Solr server is not up. Exiting.')
-            sys.exit()
+            sys.exit(1)
 
     def getDocCount(self):
         URL = '{}/{}/query?q=*:*&rows=1&wt=json&indent=true'.format(self.base_url, self.core)
         content = self._submit(URL)
         print('[Info] Number of document in the {} core: {}'.format(self.core, content['response']['numFound']))
-
 
     def _submit(self, URL, headers={ "Content-Type" : "application/json", "Accept" : "application/json"}, jsonData = {}, data = ''):
         if not jsonData and not data:
@@ -63,15 +62,12 @@ class solr(object):
         
         if not r.ok:
             r.raise_for_status()
-            sys.exit()
+            sys.exit(1)
 
         try:
             return(r.json())
         except:
             return(r.content)
-
-def updateSchema(dataFolder, schemaFile):
-        return(1)
 
 def validateDocument(schema, documentFile):
         # Reading file into a dataframe
@@ -85,49 +81,61 @@ def validateDocument(schema, documentFile):
                 return(0)
 
         print("[Info] Field names successfully validated for {}".format(documentFile))
-
+        return(1)
+        
         # Validate every rows for each columns
         # Is the type good?
         # Is the field multivalued?
 
-        return(1)
-
-
 if __name__ == '__main__':
 
     # Parsing command line arguments:
-    # parser = argparse.ArgumentParser()
-    # parser.add_argument('--server', type=str, help='Name of the solr server eg. localhost.')
-    # parser.add_argument('--port', type=int, help='Port number of the solr instance.')
-    # parser.add_argument('--core', type=str, help='Name of the solr core. eg. gwas or gwas_slim')
-    # parser.add_argument('--dataFolder', type=str, help='Directory for the solr core.')
-    # parser.add_argument('--instanceFolder', type=str, help='Directory where the solr instance can be found.')
-    # parser.add_argument('--schemaFile', type=str, help='The new schema file to overwrite the existing shcema.')
-    # parser.add_argument('--documentFolder', type=str, help='Folder with the json documents.')
-    # args = parser.pa`QAWarse_args()
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--server', type=str, help='Name of the solr server eg. localhost.')
+    parser.add_argument('--port', type=int, help='Port number of the solr instance.')
+    parser.add_argument('--core', type=str, help='Name of the solr core. eg. gwas or gwas_slim')
+    parser.add_argument('--dataFolder', type=str, help='Directory for the solr core.')
+    parser.add_argument('--instanceFolder', type=str, help='Directory where the solr instance can be found.')
+    parser.add_argument('--schemaFile', type=str, help='The new schema file to overwrite the existing shcema.')
+    parser.add_argument('--documentFolder', type=str, help='Folder with the json documents.')
+    args = parser.parse_args()
 
-    # global DATABASE_NAME
-    # DATABASE_NAME = args.database
+    server = args.server
+    port = args.port
+    core = args.core
+    dataFolder = args.dataFolder
+    schemaFile = args.schemaFile
+    documentFolder = args.documentFolder
 
-    # server = args.server
-    # port = args.port
-    # core = args.core
-    # dataFolder = args.dataFolder
-    # schemaFile = args.schemaFile
-    # documentFolder = args.documentFolder
+    # Is the server provided:
+    if not server:
+        print('[Error] Server name is not provided (eg. localhost). Exiting.')
+        sys.exit(1)
 
-    server = 'snoopy'
-    port = '8987'
-    core = 'gwas_slim'
-    docFolder = '/homes/dsuveges/Project/gwas-solr-slim/data'
-    schemaFile = '/homes/dsuveges/Project/gwas-solr-slim/solr_config/schema.xml'
-    dataFolder = '/nfs/spot/sw/dev/gwas-dev2/interfaces/solr/server/solr'
+    # Is the port provided:
+    if not port:
+        print('[Error] Number is not provided (eg. 8983). Exiting.')
+        sys.exit(1)
 
-    # # Doing some checking: 
-    # # test if datafolder exists:
-    # # Test if schema file exists but only if given:
-    # # Test if document folder exists:
-    # # Do we want to update schema? - test it!
+    # Is the core provided:
+    if not core:
+        print('[Error] Solr core is not provided (eg. gwas). Exiting.')
+        sys.exit(1)
+
+    # Is the datafolder provided and exists:
+    if not os.path.isdir(dataFolder):
+        print('[Error] No valid data folder provided. Exiting.')
+        sys.exit(1)
+
+    # Is the schemafile provided and exists:
+    if not os.path.isfile(schemaFile):
+        print('[Error] No valid schema file provided. Exiting.')
+        sys.exit(1)
+
+    # Is the documentfolder provided and exists:
+    if not os.path.isdir(documentFolder):
+        print('[Error] No valid folder containing documents provided. Exiting.')
+        sys.exit(1)
 
     # Initializing solr object:
     solrObj = solr(server, port, core)
@@ -144,7 +152,7 @@ if __name__ == '__main__':
         except Exception as e:
             print(e)
             print("[Error] Copying schema file failed.")
-            sys.exit()
+            sys.exit(1)
         
         # Reload core:
         solrObj.reloadCore()
@@ -159,7 +167,7 @@ if __name__ == '__main__':
     # 4    True        True       authorAscii      NaN   True  text_general
 
     # Reading all files from a directory and validate fields:
-    for documentFile in glob.glob('{}/*.json'.format(docFolder)):
+    for documentFile in glob.glob('{}/*.json'.format(documentFolder)):
         valid = validateDocument(solrSchema, documentFile)
         if valid:
             solrObj.addDocument(documentFile)

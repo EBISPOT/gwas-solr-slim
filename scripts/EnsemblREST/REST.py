@@ -14,7 +14,6 @@ class REST(object):
 
     def __init__(self, URL):
         self.URL = URL
-        print("Cica")
 
     # https://rest.ensembl.org/info/data/?content-type=application/json
     def getEnsemblRelease(self):
@@ -163,8 +162,15 @@ class REST(object):
             print ("[Error] request failed! Code: %s, Text: %s" % (response.status_code, response.text))
             print ("[Error] Reason: %s" % response.reason)
             print ("[Error] submitted data: %s" % data)
-
-        return(response.json())
+        
+        try:
+            return(response.json())
+        except ValueError:
+            print('[Error] The returned data was not a json.... ')
+            print('[Info] Endpoint: ' + ext)
+            print('[Info] Data: ' + data)
+            print('[Info] Response: ' + response.content)
+            return([])
 
     # Submitting request:
     def __get_submit(self, URL):
@@ -174,5 +180,10 @@ class REST(object):
         response = requests.get(URL, headers={ "Content-Type" : "application/json"})
         if not response.ok:
             return(response.raise_for_status())
-
-        return(response.json())
+        
+        try:
+            return(response.json())
+        except ValueError:
+            print('[Error] The returned data was not a json.... ')
+            print('[Info] URL: ' + URL)
+            print('[Info] Response: ' + response.content)
