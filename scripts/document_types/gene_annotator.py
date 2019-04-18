@@ -13,7 +13,7 @@ from tqdm import tqdm
 import signal
 
 sys.path.append('scripts/EnsemblREST')
-from REST import REST
+from EnsemblREST import REST
 
 class GeneAnnotator(object):
     '''
@@ -23,10 +23,10 @@ class GeneAnnotator(object):
     def __init__(self, HGNCFile, EnsemblFtpPath, RESTServer, verbose = False):
         # Setting verbosity flag:
         self.__verbose = verbose
-
+        print(RESTServer)
         # Initialize handler for the REST API of Ensembl:
         try:
-            self.EnsemblREST = REST(RESTServer)
+            self.EnsemblREST = REST.REST(RESTServer)
         except:
             raise("[Error] The initialization of the REST handler for Ensembl failed.")
 
