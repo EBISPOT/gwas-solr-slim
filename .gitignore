@@ -6,4 +6,5 @@
 *.properties
 *.json
 lsf_logs/
-
+.DS*
+*._*
