@@ -19,20 +19,25 @@ def get_gene_data(connection, RESTURL, limit=0, testRun = False):
     # Extract gene/mapping data from database:
     geneSQL = gene_sql(connection=connection, testRun = testRun, limit = limit)
     mappedGenes = geneSQL.get_results()
-    geneSQL.save_results('data/gene_mapping.pkl')
     
+    ## For testing purposes the mapped genes and variants can be serialized:
+    # geneSQL.save_results('data/gene_mapping.pkl')
+    # mappedPickleFile = 'data/gene_mapping.pkl'
+    # with (open(mappedPickleFile, 'rb'))as f:
+    #     mappedGenes = pickle.load(f)
+
     # Initialize annotator object:
     geneAnnotObj = gene_annotator.GeneAnnotator(verbose=1, RESTServer= RESTURL,
                         EnsemblFtpPath=EnsemblFtpPath, HGNCFile=HGNC_file)
-    geneAnnotObj.save_data('data/gene_annotator.pkl')
 
-    # Reading the annotator from pickle, for testing:
-    #annotatorFile = 'gene_annotator.plk'
-    #with (open(annotatorFile, 'rb'))as f:
-    #    geneAnnotObj = pickle.load(f)
+    ## For testing purposes the annotator object can be serialized and re-loaded:
+    # geneAnnotObj.save_data('data/gene_annotator.pkl')
+    # annotatorFile = 'gene_annotator.plk'
+    # with (open(annotatorFile, 'rb'))as f:
+    #     geneAnnotObj = pickle.load(f)
 
     # Generating documents:
-    geneDocuments = geneAnnotObj.create_document(geneSQL.get_results())
+    geneDocuments = geneAnnotObj.create_document(mappedGenes)
 
     return(geneDocuments)
 
@@ -125,7 +130,7 @@ class gene_sql(object):
         tqdm.pandas(desc="Extracting mapped genes...")
         
         # Looping through all associations and return genomic context:
-        if limit != None:
+        if limit != 0:
             x = self.association_df.sample(n = limit).progress_apply(self.__process_association_row, axis = 1)
         else:
             x = self.association_df.progress_apply(self.__process_association_row, axis = 1)

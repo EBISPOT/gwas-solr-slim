@@ -66,7 +66,7 @@ def check_data(data, doctype):
     return(data)
 
 # def save_data(data, docfileSuffix, data_type=None):
-def save_data(data, data_type=None):
+def save_data(data, targetDir, data_type=None):
     '''
     data: list of solr ducments as dictionaries
         dictionaries have to contain the resourcename key.
@@ -74,18 +74,10 @@ def save_data(data, data_type=None):
 
     resourcename = data[0]['resourcename']
 
-    # Save data to file
-    jsonData = json.dumps(data)
-    my_path = os.path.abspath(os.path.dirname(__file__))
+    fileNameWithPath = '{}/{}_data.json'.format(targetDir, resourcename)
 
-    current_dir = os.getcwd()
-    path = os.path.join(current_dir, "data/%s_data.json" % (resourcename))
-
-
-    # path = os.path.join(my_path, "data/%s_data_%s.json" % (resourcename, docfileSuffix))
-    # path = os.path.join(my_path, "data/%s_data.json" % (resourcename))
-    with open(path, 'w') as outfile:
-        outfile.write(jsonData)
+    with open(fileNameWithPath, 'wb') as outfile:
+        json.dump(data, outfile)
 
 def variant_data(connection, limit=0, test=False):
     return variant.get_variant_data(connection, limit, testRun = test)
@@ -108,7 +100,11 @@ if __name__ == '__main__':
                         help='Run as (default: publication).')
     parser.add_argument('--restURL', default = 'https://rest.ensembl.org', help = 'URL of Ensembl REST API. Determines which Ensembl release will be used.')
     parser.add_argument('--test', help = 'Generate ducments on a test set. (needs to be implemented to each document types1!)', action = 'store_true', default=False)
+    parser.add_argument('--targetDir', help = 'Folder in which the output files will be saved.', type = str, default='./data')
+
     args = parser.parse_args()
+
+    targetDir = args.targetDir
 
     global DATABASE_NAME
     DATABASE_NAME = args.database
@@ -143,7 +139,7 @@ if __name__ == '__main__':
         document_data = dispatcher[doc](db_object.connection, limit, test)
         document_data = check_data(document_data, doc)
         # save_data(document_data, docfileSuffix)
-        save_data(document_data)
+        save_data(document_data, targetDir)
 
     # Close database connection
     db_object.close()
