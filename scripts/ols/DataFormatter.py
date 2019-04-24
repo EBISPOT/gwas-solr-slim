@@ -37,7 +37,11 @@ class DataFormatter:
 
         # Get link for ancestors
         if type == 'ancestors':
-            result_obj[ancestors] = term_result['_links']['ancestors']['href']
+            # Check if key exists
+            if 'ancestors' in term_result['_links'].keys():
+                result_obj[ancestors] = term_result['_links']['ancestors']['href']
+            else:
+                pass
         
         # Get link for hierarchicalDescendants
         if type == 'hierarchicalDescendants':
