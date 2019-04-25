@@ -293,8 +293,6 @@ def __get_descendants(efo_data):
 
 
     for row in tqdm(efo_data, desc='Getting EFO term - hierarchicalDescendants mapping'):
-        print >> sys.stderr, '\nEFO term: ', row[2], row[4]
-
         ols_data = OLSData.OLSData(row[2])
         ols_term_data = ols_data.get_ols_term(type)
 
@@ -302,7 +300,6 @@ def __get_descendants(efo_data):
             if 'hierarchicalDescendants' in ols_term_data.keys():
                 descendant_data = OLSData.OLSData(ols_term_data['hierarchicalDescendants'])
                 descendant_terms = [descendant.encode('utf-8') for descendant in descendant_data.get_hierarchicalDescendants()]
-                print >> sys.stderr, '** Descendants: ', descendant_terms
                 efo_descendants[row[4]] = descendant_terms
             else:
                 # add key and empty list to map
