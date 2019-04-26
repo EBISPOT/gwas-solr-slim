@@ -15,9 +15,17 @@ def get_trait_data(connection, limit=0):
     '''
 
     efo_sql = """
-        SELECT DISTINCT(ET.ID), ET.TRAIT, ET.URI, 
-            'trait' as resourcename, ET.SHORT_FORM
-        FROM EFO_TRAIT ET
+        SELECT DISTINCT (ET.ID), ET.TRAIT, ET.URI, 
+            'trait' as resourcename, ET.SHORT_FORM 
+        FROM EFO_TRAIT ET, STUDY_EFO_TRAIT SETR, STUDY S, HOUSEKEEPING H 
+        WHERE ET.ID=SETR.EFO_TRAIT_ID and SETR.STUDY_ID=S.ID 
+            and S.HOUSEKEEPING_ID=H.ID and H.IS_PUBLISHED=1 
+        UNION 
+        SELECT DISTINCT (ET.ID), ET.TRAIT, ET.URI, 
+            'trait' as resourcename, ET.SHORT_FORM 
+        FROM EFO_TRAIT ET, ASSOCIATION_EFO_TRAIT AET, ASSOCIATION A, STUDY S, HOUSEKEEPING H 
+        WHERE ET.ID=AET.EFO_TRAIT_ID and AET.ASSOCIATION_ID=A.ID 
+            and A.STUDY_ID=S.ID and S.HOUSEKEEPING_ID=H.ID and H.IS_PUBLISHED=1
     """
 
     reported_trait_sql = """ 
@@ -285,7 +293,6 @@ def __get_descendants(efo_data):
 
 
     for row in tqdm(efo_data, desc='Getting EFO term - hierarchicalDescendants mapping'):
-
         ols_data = OLSData.OLSData(row[2])
         ols_term_data = ols_data.get_ols_term(type)
 
