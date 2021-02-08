@@ -1,7 +1,7 @@
 import requests, json
 import urllib
 
-import DataFormatter
+import ols.DataFormatter
 
 
 
@@ -45,7 +45,7 @@ class OLSData:
                 return no_results
         
         except requests.exceptions.RequestException as e:
-            print e
+            print(e)
 
 
     def get_ancestors(self):
@@ -76,7 +76,7 @@ class OLSData:
                 return no_results
         
         except requests.exceptions.RequestException as e:
-            print e
+            print(e)
 
 
 
@@ -119,7 +119,7 @@ class OLSData:
                 return no_results
         
         except requests.exceptions.RequestException as e:
-            print e
+            print(e)
 
 
     def __get_pages(self, page):
@@ -142,7 +142,7 @@ class OLSData:
             else:
                 return no_results
         except requests.exceptions.RequestException as e:
-            print e
+            print(e)
 
 
 

@@ -7,10 +7,9 @@ import json
 import os.path
 import datetime
 import pandas
+from gwas_db_connect import DBConnection
 
 # Custom modules
-from database import DBConnection
-import gwas_data_sources
 from ols import OLSData
 from document_types import publication
 from document_types import trait
@@ -76,7 +75,7 @@ def save_data(data, targetDir, data_type=None):
 
     fileNameWithPath = '{}/{}_data.json'.format(targetDir, resourcename)
 
-    with open(fileNameWithPath, 'wb') as outfile:
+    with open(fileNameWithPath, 'w') as outfile:
         json.dump(data, outfile)
 
 def variant_data(connection, limit=0, test=False):

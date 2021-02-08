@@ -211,5 +211,5 @@ def get_study_data(connection, limit=0):
 
         return all_study_data
 
-    except cx_Oracle.DatabaseError, exception:
-        print exception
+    except cx_Oracle.DatabaseError as e:
+        print(e)

@@ -107,7 +107,7 @@ def get_trait_data(connection, limit=0):
 
                         available_efo_children.append(mapped_trait[4])
                         if len(available_efo_children) >= 1000:
-                            print "[Error] Too many EFOs for query: ", mapped_trait[4], len(available_efo_children)
+                            print("[Error] Too many EFOs for query: ", mapped_trait[4], len(available_efo_children))
 
                         #TODO: Handle case if available_efo_children > 1000
                         all_unique_study_count = __get_count(available_efo_children[0:999], cursor, 'study')
@@ -209,8 +209,8 @@ def get_trait_data(connection, limit=0):
             return all_trait_data
 
 
-    except cx_Oracle.DatabaseError, exception:
-        print exception
+    except cx_Oracle.DatabaseError as e:
+        print(e)
 
 
 
