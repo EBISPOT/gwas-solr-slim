@@ -18,6 +18,7 @@ from document_types import variant
 from document_types import gene
 from document_types import gene_annotator
 
+
 def publication_data(connection, limit=0, test=False):
     return publication.get_publication_data(connection, testRun = test)
 
@@ -84,22 +85,27 @@ def variant_data(connection, limit=0, test=False):
 def gene_data(connection, limit=0, test=False):
     return gene.get_gene_data(connection, RESTURL, limit, testRun = test)
 
-if __name__ == '__main__':
+def main():
     '''
-    Create Solr documents for categories of interest.
-    '''
+     Create Solr documents for categories of interest.
+     '''
 
     # Commandline arguments
     parser = argparse.ArgumentParser()
     parser.add_argument('--database', default='SPOTREL', choices=['DEV3', 'SPOTREL'],
                         help='Run as (default: SPOTREL).')
-    parser.add_argument('--limit', type=int, help='Limit the number of created documents to this number for testing purposes.', default = 0)
+    parser.add_argument('--limit', type=int,
+                        help='Limit the number of created documents to this number for testing purposes.', default=0)
     parser.add_argument('--document', default='publication',
                         choices=['publication', 'trait', 'variant', 'gene', 'all'],
                         help='Run as (default: publication).')
-    parser.add_argument('--restURL', default = 'https://rest.ensembl.org', help = 'URL of Ensembl REST API. Determines which Ensembl release will be used.')
-    parser.add_argument('--test', help = 'Generate ducments on a test set. (needs to be implemented to each document types1!)', action = 'store_true', default=False)
-    parser.add_argument('--targetDir', help = 'Folder in which the output files will be saved.', type = str, default='./data')
+    parser.add_argument('--restURL', default='https://rest.ensembl.org',
+                        help='URL of Ensembl REST API. Determines which Ensembl release will be used.')
+    parser.add_argument('--test',
+                        help='Generate ducments on a test set. (needs to be implemented to each document types1!)',
+                        action='store_true', default=False)
+    parser.add_argument('--targetDir', help='Folder in which the output files will be saved.', type=str,
+                        default='./data')
 
     args = parser.parse_args()
 
@@ -111,7 +117,7 @@ if __name__ == '__main__':
     limit = args.limit
     test = args.test
 
-    global RESTURL  
+    global RESTURL
     RESTURL = args.restURL
 
     # Docfile suffix
@@ -123,10 +129,10 @@ if __name__ == '__main__':
 
     # select function
     dispatcher = {
-        'publication' : publication_data, 
-        'trait' : trait_data, 
-        'variant' : variant_data, 
-        'gene' : gene_data
+        'publication': publication_data,
+        'trait': trait_data,
+        'variant': variant_data,
+        'gene': gene_data
     }
 
     # Get the list of document types to create
@@ -142,4 +148,8 @@ if __name__ == '__main__':
 
     # Close database connection
     db_object.close()
+
+
+if __name__ == '__main__':
+    main()
 

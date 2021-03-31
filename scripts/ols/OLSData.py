@@ -1,8 +1,7 @@
 import requests, json
 import urllib
 
-import ols.DataFormatter
-
+from ols import DataFormatter
 
 
 class OLSData:
@@ -16,7 +15,7 @@ class OLSData:
         '''
 
         term_iri = self.term_iri
-        term_iri_double_encoded = urllib.quote_plus(urllib.quote_plus(term_iri))
+        term_iri_double_encoded = urllib.parse.quote_plus(urllib.parse.quote_plus(term_iri))
 
 
         # TODO: Make robust to the term/ontology being removed from OLS
