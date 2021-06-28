@@ -16,6 +16,7 @@ from document_types import trait
 from document_types import study
 from document_types import variant
 from document_types import gene
+from document_types import unpub_study
 from document_types import gene_annotator
 
 
@@ -27,6 +28,9 @@ def trait_data(connection, limit=0, test=False):
 
 def study_data(connection, limit=0, test=False):
     return study.get_study_data(connection)
+
+def unpub_study_data(connection, limit=0, test=False):
+    return unpub_study.get_unpub_study_data(connection)
 
 def check_data(data, doctype):
     '''
@@ -97,12 +101,12 @@ def main():
     parser.add_argument('--limit', type=int,
                         help='Limit the number of created documents to this number for testing purposes.', default=0)
     parser.add_argument('--document', default='publication',
-                        choices=['publication', 'trait', 'variant', 'gene', 'all'],
+                        choices=['publication', 'trait', 'variant', 'gene', 'unpub', 'all'],
                         help='Run as (default: publication).')
     parser.add_argument('--restURL', default='https://rest.ensembl.org',
                         help='URL of Ensembl REST API. Determines which Ensembl release will be used.')
     parser.add_argument('--test',
-                        help='Generate ducments on a test set. (needs to be implemented to each document types1!)',
+                        help='Generate docments on a test set. (needs to be implemented to each document type!)',
                         action='store_true', default=False)
     parser.add_argument('--targetDir', help='Folder in which the output files will be saved.', type=str,
                         default='./data')
@@ -132,12 +136,13 @@ def main():
         'publication': publication_data,
         'trait': trait_data,
         'variant': variant_data,
-        'gene': gene_data
+        'gene': gene_data,
+        'unpub': unpub_study_data
     }
 
     # Get the list of document types to create
     documents = [args.document]
-    if args.document == 'all': documents = ['publication', 'trait', 'variant', 'gene']
+    if args.document == 'all': documents = ['publication', 'trait', 'variant', 'gene', 'unpub']
 
     # Loop through all the document types and generate document
     for doc in documents:

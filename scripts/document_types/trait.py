@@ -220,7 +220,7 @@ def __get_count(efos, cursor, count_type):
     these EFO IDs, Parent trait and all of it's children.
     '''
 
-    in_vars = ','.join(':%d' % i for i in xrange(len(efos)))
+    in_vars = ','.join(':%d' % i for i in range(len(efos)))
 
     unique_study_count_sql = """
         SELECT COUNT(DISTINCT (S.ACCESSION_ID)) 
@@ -296,7 +296,7 @@ def __get_descendants(efo_data):
         ols_data = OLSData.OLSData(row[2])
         ols_term_data = ols_data.get_ols_term(type)
 
-        if not ols_term_data['iri'] == None:
+        if ols_term_data['iri']:
             if 'hierarchicalDescendants' in ols_term_data.keys():
                 descendant_data = OLSData.OLSData(ols_term_data['hierarchicalDescendants'])
                 descendant_terms = [descendant.encode('utf-8') for descendant in descendant_data.get_hierarchicalDescendants()]
