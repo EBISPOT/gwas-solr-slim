@@ -101,7 +101,7 @@ def main():
     parser.add_argument('--limit', type=int,
                         help='Limit the number of created documents to this number for testing purposes.', default=0)
     parser.add_argument('--document', default='publication',
-                        choices=['publication', 'trait', 'variant', 'gene', 'unpub', 'all'],
+                        choices=['publication', 'trait', 'variant', 'gene', 'unpub', 'study', 'all'],
                         help='Run as (default: publication).')
     parser.add_argument('--restURL', default='https://rest.ensembl.org',
                         help='URL of Ensembl REST API. Determines which Ensembl release will be used.')
@@ -137,12 +137,13 @@ def main():
         'trait': trait_data,
         'variant': variant_data,
         'gene': gene_data,
-        'unpub': unpub_study_data
+        'unpub': unpub_study_data,
+        'study': study_data
     }
 
     # Get the list of document types to create
     documents = [args.document]
-    if args.document == 'all': documents = ['publication', 'trait', 'variant', 'gene', 'unpub']
+    if args.document == 'all': documents = ['publication', 'trait', 'variant', 'gene', 'study', 'unpub']
 
     # Loop through all the document types and generate document
     for doc in documents:
