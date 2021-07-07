@@ -276,7 +276,7 @@
     <!-- Text fields from SolrCell to search by default in our catch-all field -->
     <copyField source="title" dest="text" />
     <copyField source="pmid" dest="text" />
-    <!-- <copyField source="accessionId" dest="text" />
+    <copyField source="accessionId" dest="text" />
     <copyField source="ancestralGroups" dest="text"/> -->
     <copyField source="parentDocument_accessionId" dest="text"/>
     <copyField source="parentDocument_ancestralGroups" dest="text"/>

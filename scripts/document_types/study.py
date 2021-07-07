@@ -75,7 +75,7 @@ class published_study(object):
 
     def get_study_data(self):
         self.study_df = pd.read_sql(self.pub_study_sql, self.connection)
-        self.study_df.rename(columns={'ID': 'id', 'PUBLICATION': 'title', 'ACCESSION_ID': 'accession_id'}, inplace=True)
+        self.study_df.rename(columns={'ID': 'id', 'PUBLICATION': 'title', 'ACCESSION_ID': 'accessionId'}, inplace=True)
         return self.study_df
 
 
@@ -97,7 +97,7 @@ class unpublished_study():
 
     def get_study_data(self):
         self.study_df = pd.read_sql(self.unpub_study_sql, self.connection)
-        self.study_df.rename(columns={'ID': 'id', 'TITLE': 'title', 'ACCESSION': 'accession_id'}, inplace=True)
+        self.study_df.rename(columns={'ID': 'id', 'TITLE': 'title', 'ACCESSION': 'accessionId'}, inplace=True)
         return self.study_df
 
 
@@ -106,7 +106,7 @@ def get_study_data(connection, limit=0):
     unpublished_study_df = unpublished_study(connection=connection).get_study_data()
     study_df = published_study_df.append(unpublished_study_df, ignore_index=True)
     study_df['resourcename'] = 'study'
-    study_df['description'] = study_df['accession_id']
+    study_df['description'] = study_df['accessionId']
     study_document = study_df.to_dict('records')
     return study_document
 
