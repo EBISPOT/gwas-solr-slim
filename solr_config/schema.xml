@@ -146,7 +146,7 @@
 
 
   <!-- specific fields for Study -->
-  <!-- <field name="accessionId" type="string" indexed="true" stored="true" multiValued="false" />
+  <field name="accessionId" type="text_general" indexed="true" stored="true" multiValued="false" />
   <field name="ancestralGroups" type="text_general" indexed="true" stored="true" multiValued="true" /> -->
   <field name="platform" type="string" indexed="true" stored="true" multiValued="false" />
   <!-- <field name="fullPvalueSet" type="boolean" indexed="true" stored="true" multiValued="false" /> -->
