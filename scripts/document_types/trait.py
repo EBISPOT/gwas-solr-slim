@@ -9,7 +9,7 @@ import os.path
 from ols import OLSData
 
 
-def get_trait_data(connection, limit=0):
+def get_trait_data(connection, limit=None):
     '''
     Given each Mapped EFO trait, get all Reported trait information.
     '''
@@ -42,6 +42,7 @@ def get_trait_data(connection, limit=0):
         with contextlib.closing(connection.cursor()) as cursor:
             cursor.execute(efo_sql)
             mapped_trait_data = cursor.fetchall()
+
 
             # Build Lookup table of EFO_ID to list of children
             efo_descendants_map =  __get_descendants(mapped_trait_data)
@@ -173,7 +174,7 @@ def get_trait_data(connection, limit=0):
 
                     # Add synonyms
                     if not ols_term_data['synonyms'] == None:
-                        synonyms = [synonym.encode('utf-8') for synonym in ols_term_data['synonyms']]
+                        synonyms = [synonym for synonym in ols_term_data['synonyms']]
                         mapped_trait_document['synonyms'] = synonyms
                         # Add autosuggest fields
                         mapped_trait_document['synonym_autosuggest'] = synonyms
@@ -186,7 +187,7 @@ def get_trait_data(connection, limit=0):
                     # Add ancestors
                     if not ols_term_data['ancestors'] == None:
                         ancestor_data = OLSData.OLSData(ols_term_data['ancestors'])
-                        ancestor_terms = [ancestor.encode('utf-8') for ancestor in ancestor_data.get_ancestors()]
+                        ancestor_terms = [ancestor for ancestor in ancestor_data.get_ancestors()]
                         mapped_trait_document['parent'] = ancestor_terms
 
                 else:
@@ -299,7 +300,7 @@ def __get_descendants(efo_data):
         if ols_term_data['iri']:
             if 'hierarchicalDescendants' in ols_term_data.keys():
                 descendant_data = OLSData.OLSData(ols_term_data['hierarchicalDescendants'])
-                descendant_terms = [descendant.encode('utf-8') for descendant in descendant_data.get_hierarchicalDescendants()]
+                descendant_terms = [descendant for descendant in descendant_data.get_hierarchicalDescendants()]
                 efo_descendants[row[4]] = descendant_terms
             else:
                 # add key and empty list to map
