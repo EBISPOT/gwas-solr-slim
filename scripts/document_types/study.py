@@ -7,7 +7,7 @@ class published_study(object):
     """
 
     pub_study_sql = """
-        SELECT S.ID, S.ACCESSION_ID, P.PUBLICATION
+        SELECT S.ID, S.ACCESSION_ID, P.TITLE
         FROM STUDY S, PUBLICATION P, AUTHOR A
         WHERE S.PUBLICATION_ID=P.ID and P.FIRST_AUTHOR_ID=A.ID
     """
@@ -71,7 +71,7 @@ class published_study(object):
 
     def get_study_data(self):
         self.study_df = pd.read_sql(self.pub_study_sql, self.connection)
-        self.study_df.rename(columns={'ID': 'id', 'PUBLICATION': 'title', 'ACCESSION_ID': 'accessionId'}, inplace=True)
+        self.study_df.rename(columns={'ID': 'id', 'TITLE': 'title', 'ACCESSION_ID': 'accessionId'}, inplace=True)
         return self.study_df
 
 
