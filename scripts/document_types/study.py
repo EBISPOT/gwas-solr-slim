@@ -7,9 +7,25 @@ class published_study(object):
     """
 
     pub_study_sql = """
-        SELECT S.ID, S.ACCESSION_ID, P.TITLE
-        FROM STUDY S, PUBLICATION P, AUTHOR A
-        WHERE S.PUBLICATION_ID=P.ID and P.FIRST_AUTHOR_ID=A.ID
+        SELECT T1.ID, T1.ACCESSION_ID, T1.TITLE, T2.ASSOC_COUNT 
+            FROM
+            (SELECT 
+                S.ID AS ID, 
+                S.ACCESSION_ID AS ACCESSION_ID, 
+                P.TITLE AS TITLE 
+                FROM STUDY S, PUBLICATION P
+                WHERE S.PUBLICATION_ID=P.ID
+            ) T1 
+            LEFT JOIN 
+            (
+                SELECT A.STUDY_ID, COUNT(A.ID) AS ASSOC_COUNT 
+                FROM 
+                ASSOCIATION A 
+                GROUP BY A.STUDY_ID
+            ) T2 
+                ON T1.ID = T2.STUDY_ID
+                WHERE T1.ACCESSION_ID IS NOT NULL
+                ORDER BY T1.ACCESSION_ID;
     """
 
     # below are some currently unused sql queries - but should we want to
@@ -71,7 +87,13 @@ class published_study(object):
 
     def get_study_data(self):
         self.study_df = pd.read_sql(self.pub_study_sql, self.connection)
-        self.study_df.rename(columns={'ID': 'id', 'TITLE': 'title', 'ACCESSION_ID': 'accessionId'}, inplace=True)
+        self.study_df.rename(columns={'ID': 'id',
+                                      'TITLE': 'title',
+                                      'ACCESSION_ID': 'accessionId',
+                                      'ASSOC_COUNT': 'associationCount'
+                                      }, inplace=True)
+        # Set the study published as True
+        self.study_df['published'] = True
         return self.study_df
 
 
@@ -92,7 +114,12 @@ class unpublished_study():
 
     def get_study_data(self):
         self.study_df = pd.read_sql(self.unpub_study_sql, self.connection)
-        self.study_df.rename(columns={'ID': 'id', 'TITLE': 'title', 'ACCESSION': 'accessionId'}, inplace=True)
+        self.study_df.rename(columns={'ID': 'id',
+                                      'TITLE': 'title',
+                                      'ACCESSION': 'accessionId'
+                                      }, inplace=True)
+
+        self.study_df['published'] = False
         return self.study_df
 
 
