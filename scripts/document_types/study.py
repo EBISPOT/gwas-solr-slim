@@ -7,12 +7,13 @@ class published_study(object):
     """
 
     pub_study_sql = """
-        SELECT T1.ID, T1.ACCESSION_ID, T1.TITLE, T2.ASSOC_COUNT 
-            FROM
-            (SELECT 
+        SELECT T1.ID, T1.ACCESSION_ID, T1.SUMSTATS_AVAILABLE, T1.TITLE, T2.ASSOC_COUNT 
+            FROM (
+                SELECT 
                 S.ID AS ID, 
-                S.ACCESSION_ID AS ACCESSION_ID, 
-                P.TITLE AS TITLE 
+                S.ACCESSION_ID AS ACCESSION_ID,
+                S.FULL_PVALUE_SET AS SUMSTATS_AVAILABLE,
+                P.TITLE AS TITLE
                 FROM STUDY S, PUBLICATION P
                 WHERE S.PUBLICATION_ID=P.ID
             ) T1 
@@ -23,9 +24,9 @@ class published_study(object):
                 ASSOCIATION A 
                 GROUP BY A.STUDY_ID
             ) T2 
-                ON T1.ID = T2.STUDY_ID
-                WHERE T1.ACCESSION_ID IS NOT NULL
-                ORDER BY T1.ACCESSION_ID;
+        ON T1.ID = T2.STUDY_ID
+        WHERE T1.ACCESSION_ID IS NOT NULL
+        ORDER BY T1.ACCESSION_ID
     """
 
     # below are some currently unused sql queries - but should we want to
@@ -90,10 +91,13 @@ class published_study(object):
         self.study_df.rename(columns={'ID': 'id',
                                       'TITLE': 'title',
                                       'ACCESSION_ID': 'accessionId',
-                                      'ASSOC_COUNT': 'associationCount'
+                                      'ASSOC_COUNT': 'associationCount',
+                                      'SUMSTATS_AVAILABLE': 'fullPvalueSet'
                                       }, inplace=True)
         # Set the study published as True
         self.study_df['published'] = True
+        bool_map = {1: True, 0: False}
+        self.study_df['fullPvalueSet'] = self.study_df['fullPvalueSet'].map(bool_map)
         return self.study_df
 
 
@@ -103,7 +107,7 @@ class unpublished_study():
     """
 
     unpub_study_sql = """
-        SELECT S.ID, S.ACCESSION, B.TITLE
+        SELECT S.ID, S.ACCESSION, S.SUMMARY_STATS_FILE, B.TITLE
         FROM UNPUBLISHED_STUDY S, BODY_OF_WORK B, UNPUBLISHED_STUDY_TO_WORK J
         WHERE S.ID = J.STUDY_ID 
         AND J.WORK_ID = B.ID
@@ -116,10 +120,13 @@ class unpublished_study():
         self.study_df = pd.read_sql(self.unpub_study_sql, self.connection)
         self.study_df.rename(columns={'ID': 'id',
                                       'TITLE': 'title',
-                                      'ACCESSION': 'accessionId'
+                                      'ACCESSION': 'accessionId',
+                                      'SUMMARY_STATS_FILE': 'sumstatsAvailable'
                                       }, inplace=True)
 
         self.study_df['published'] = False
+        self.study_df['associationCount'] = None
+        self.study_df['fullPvalueSet'] = self.study_df['sumstatsAvailable'].replace(regex={r'.+': True, None: False})
         return self.study_df
 
 
