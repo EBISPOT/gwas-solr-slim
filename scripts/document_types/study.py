@@ -96,6 +96,7 @@ class published_study(object):
                                       }, inplace=True)
         # Set the study published as True
         self.study_df['published'] = True
+        self.study_df['associationCount'] = self.study_df['associationCount'].fillna(0)
         bool_map = {1: True, 0: False}
         self.study_df['fullPvalueSet'] = self.study_df['fullPvalueSet'].map(bool_map)
         return self.study_df
@@ -121,12 +122,12 @@ class unpublished_study():
         self.study_df.rename(columns={'ID': 'id',
                                       'TITLE': 'title',
                                       'ACCESSION': 'accessionId',
-                                      'SUMMARY_STATS_FILE': 'sumstatsAvailable'
+                                      'SUMMARY_STATS_FILE': 'fullPvalueSet'
                                       }, inplace=True)
 
         self.study_df['published'] = False
-        self.study_df['associationCount'] = None
-        self.study_df['fullPvalueSet'] = self.study_df['sumstatsAvailable'].replace(regex={r'.+': True, None: False})
+        self.study_df['associationCount'] = 0
+        self.study_df['fullPvalueSet'] = self.study_df['fullPvalueSet'].replace(regex={r'.+': True, None: False})
         return self.study_df
 
 
@@ -136,5 +137,6 @@ def get_study_data(connection, limit=0):
     study_df = published_study_df.append(unpublished_study_df, ignore_index=True)
     study_df['resourcename'] = 'study'
     study_df['description'] = study_df['accessionId']
+    study_df['associationCount'] = study_df['associationCount'].astype(int)
     study_document = study_df.to_dict('records')
     return study_document
