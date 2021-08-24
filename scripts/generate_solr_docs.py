@@ -7,17 +7,18 @@ import json
 import os.path
 import datetime
 import pandas
+from gwas_db_connect import DBConnection
 
 # Custom modules
-from database import DBConnection
-import gwas_data_sources
 from ols import OLSData
 from document_types import publication
 from document_types import trait
 from document_types import study
 from document_types import variant
 from document_types import gene
+from document_types import unpub_study
 from document_types import gene_annotator
+
 
 def publication_data(connection, limit=0, test=False):
     return publication.get_publication_data(connection, testRun = test)
@@ -27,6 +28,9 @@ def trait_data(connection, limit=0, test=False):
 
 def study_data(connection, limit=0, test=False):
     return study.get_study_data(connection)
+
+def unpub_study_data(connection, limit=0, test=False):
+    return unpub_study.get_unpub_study_data(connection)
 
 def check_data(data, doctype):
     '''
@@ -76,7 +80,7 @@ def save_data(data, targetDir, data_type=None):
 
     fileNameWithPath = '{}/{}_data.json'.format(targetDir, resourcename)
 
-    with open(fileNameWithPath, 'wb') as outfile:
+    with open(fileNameWithPath, 'w') as outfile:
         json.dump(data, outfile)
 
 def variant_data(connection, limit=0, test=False):
@@ -85,22 +89,27 @@ def variant_data(connection, limit=0, test=False):
 def gene_data(connection, limit=0, test=False):
     return gene.get_gene_data(connection, RESTURL, limit, testRun = test)
 
-if __name__ == '__main__':
+def main():
     '''
-    Create Solr documents for categories of interest.
-    '''
+     Create Solr documents for categories of interest.
+     '''
 
     # Commandline arguments
     parser = argparse.ArgumentParser()
     parser.add_argument('--database', default='SPOTREL', choices=['DEV3', 'SPOTREL'],
                         help='Run as (default: SPOTREL).')
-    parser.add_argument('--limit', type=int, help='Limit the number of created documents to this number for testing purposes.', default = 0)
+    parser.add_argument('--limit', type=int,
+                        help='Limit the number of created documents to this number for testing purposes.', default=0)
     parser.add_argument('--document', default='publication',
-                        choices=['publication', 'trait', 'variant', 'gene', 'all'],
+                        choices=['publication', 'trait', 'variant', 'gene', 'unpub', 'study', 'all'],
                         help='Run as (default: publication).')
-    parser.add_argument('--restURL', default = 'https://rest.ensembl.org', help = 'URL of Ensembl REST API. Determines which Ensembl release will be used.')
-    parser.add_argument('--test', help = 'Generate ducments on a test set. (needs to be implemented to each document types1!)', action = 'store_true', default=False)
-    parser.add_argument('--targetDir', help = 'Folder in which the output files will be saved.', type = str, default='./data')
+    parser.add_argument('--restURL', default='https://rest.ensembl.org',
+                        help='URL of Ensembl REST API. Determines which Ensembl release will be used.')
+    parser.add_argument('--test',
+                        help='Generate docments on a test set. (needs to be implemented to each document type!)',
+                        action='store_true', default=False)
+    parser.add_argument('--targetDir', help='Folder in which the output files will be saved.', type=str,
+                        default='./data')
 
     args = parser.parse_args()
 
@@ -112,7 +121,7 @@ if __name__ == '__main__':
     limit = args.limit
     test = args.test
 
-    global RESTURL  
+    global RESTURL
     RESTURL = args.restURL
 
     # Docfile suffix
@@ -124,15 +133,17 @@ if __name__ == '__main__':
 
     # select function
     dispatcher = {
-        'publication' : publication_data, 
-        'trait' : trait_data, 
-        'variant' : variant_data, 
-        'gene' : gene_data
+        'publication': publication_data,
+        'trait': trait_data,
+        'variant': variant_data,
+        'gene': gene_data,
+        'unpub': unpub_study_data,
+        'study': study_data
     }
 
     # Get the list of document types to create
     documents = [args.document]
-    if args.document == 'all': documents = ['publication', 'trait', 'variant', 'gene']
+    if args.document == 'all': documents = ['publication', 'trait', 'variant', 'gene', 'study', 'unpub']
 
     # Loop through all the document types and generate document
     for doc in documents:
@@ -143,4 +154,8 @@ if __name__ == '__main__':
 
     # Close database connection
     db_object.close()
+
+
+if __name__ == '__main__':
+    main()
 
