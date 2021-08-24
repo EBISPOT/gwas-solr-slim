@@ -146,9 +146,10 @@
 
 
   <!-- specific fields for Study -->
-  <!-- <field name="accessionId" type="string" indexed="true" stored="true" multiValued="false" />
+  <field name="accessionId" type="text_general" indexed="true" stored="true" multiValued="false" />
   <field name="ancestralGroups" type="text_general" indexed="true" stored="true" multiValued="true" /> -->
   <field name="platform" type="string" indexed="true" stored="true" multiValued="false" />
+  <field name="published" type="boolean" indexed="false" stored="true" multiValued="false" />
   <!-- <field name="fullPvalueSet" type="boolean" indexed="true" stored="true" multiValued="false" /> -->
 
 
@@ -276,7 +277,7 @@
     <!-- Text fields from SolrCell to search by default in our catch-all field -->
     <copyField source="title" dest="text" />
     <copyField source="pmid" dest="text" />
-    <!-- <copyField source="accessionId" dest="text" />
+    <copyField source="accessionId" dest="text" />
     <copyField source="ancestralGroups" dest="text"/> -->
     <copyField source="parentDocument_accessionId" dest="text"/>
     <copyField source="parentDocument_ancestralGroups" dest="text"/>

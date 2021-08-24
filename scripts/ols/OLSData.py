@@ -1,8 +1,7 @@
 import requests, json
 import urllib
 
-import DataFormatter
-
+from ols import DataFormatter
 
 
 class OLSData:
@@ -16,7 +15,7 @@ class OLSData:
         '''
 
         term_iri = self.term_iri
-        term_iri_double_encoded = urllib.quote_plus(urllib.quote_plus(term_iri))
+        term_iri_double_encoded = urllib.parse.quote_plus(urllib.parse.quote_plus(term_iri))
 
 
         # TODO: Make robust to the term/ontology being removed from OLS
@@ -45,7 +44,7 @@ class OLSData:
                 return no_results
         
         except requests.exceptions.RequestException as e:
-            print e
+            print(e)
 
 
     def get_ancestors(self):
@@ -76,7 +75,7 @@ class OLSData:
                 return no_results
         
         except requests.exceptions.RequestException as e:
-            print e
+            print(e)
 
 
 
@@ -119,7 +118,7 @@ class OLSData:
                 return no_results
         
         except requests.exceptions.RequestException as e:
-            print e
+            print(e)
 
 
     def __get_pages(self, page):
@@ -142,7 +141,7 @@ class OLSData:
             else:
                 return no_results
         except requests.exceptions.RequestException as e:
-            print e
+            print(e)
 
 
 

@@ -302,6 +302,6 @@ def get_publication_data(connection, limit=0, testRun = False):
 
         return all_publication_data
 
-    except cx_Oracle.DatabaseError, exception:
-        print exception
+    except cx_Oracle.DatabaseError as e:
+        print(e)
 
