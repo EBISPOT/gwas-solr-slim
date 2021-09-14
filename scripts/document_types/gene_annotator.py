@@ -138,7 +138,7 @@ class GeneAnnotator(object):
                 if key == 'biotype':
                     geneAnnot['biotype'] = value
                 if key == 'description':
-                    geneAnnot['description'] = urllib.unquote(value.split(" [")[0])
+                    geneAnnot['description'] = urllib.parse.unquote(value.split(" [")[0])
                 else:
                     continue
             
@@ -146,7 +146,7 @@ class GeneAnnotator(object):
             return(geneAnnot)
 
         # Using bash to filter the gff3 file with 2.8M lines
-        filteredLines = subprocess.Popen(['zgrep', 'ID=gene', self.__EnsemblFile],stdout=subprocess.PIPE)
+        filteredLines = subprocess.Popen(['zgrep', 'ID=gene', self.__EnsemblFile],stdout=subprocess.PIPE, encoding='UTF-8')
 
         # Processing output:
         for line in iter(filteredLines.stdout.readline,''):
