@@ -7,6 +7,7 @@ import json
 import os.path
 import datetime
 import pandas
+import numpy as np
 from gwas_db_connect import DBConnection
 
 # Custom modules
@@ -81,13 +82,25 @@ def save_data(data, targetDir, data_type=None):
     fileNameWithPath = '{}/{}_data.json'.format(targetDir, resourcename)
 
     with open(fileNameWithPath, 'w') as outfile:
-        json.dump(data, outfile)
+        json.dump(data, outfile, cls=NumpyEncoder)
 
 def variant_data(connection, limit=0, test=False):
     return variant.get_variant_data(connection, limit, testRun = test)
 
 def gene_data(connection, limit=0, test=False):
     return gene.get_gene_data(connection, RESTURL, limit, testRun = test)
+
+
+class NumpyEncoder(json.JSONEncoder):
+    def default(self, obj):
+        if isinstance(obj, np.integer):
+            return int(obj)
+        if isinstance(obj, np.floating):
+            return float(obj)
+        if isinstance(obj, np.ndarray):
+            return obj.tolist()
+        return super(NpEncoder, self).default(obj)
+
 
 def main():
     '''
