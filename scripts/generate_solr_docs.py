@@ -1,24 +1,16 @@
-import cx_Oracle
-import contextlib
 import argparse
 import sys
-from tqdm import tqdm
 import json
-import os.path
-import datetime
-import pandas
 import numpy as np
 from gwas_db_connect import DBConnection
 
 # Custom modules
-from ols import OLSData
-from document_types import publication
-from document_types import trait
-from document_types import study
-from document_types import variant
-from document_types import gene
-from document_types import unpub_study
-from document_types import gene_annotator
+from scripts.document_types import publication
+from scripts.document_types import trait
+from scripts.document_types import study
+from scripts.document_types import variant
+from scripts.document_types import gene
+from scripts.document_types import unpub_study
 
 
 def publication_data(connection, limit=0, test=False):

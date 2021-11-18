@@ -2,7 +2,7 @@ import os.path
 import pandas as pd
 import pickle
 from tqdm import tqdm
-from document_types import gene_annotator
+from scripts.document_types import gene_annotator
 
 def get_gene_data(connection, RESTURL, limit=0, testRun = False):
     # Importing shell variables:

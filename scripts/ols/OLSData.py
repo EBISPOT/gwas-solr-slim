@@ -1,7 +1,7 @@
 import requests, json
 import urllib
 
-from ols import DataFormatter
+from scripts.ols import DataFormatter
 
 
 class OLSData:

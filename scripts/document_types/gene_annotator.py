@@ -8,12 +8,9 @@ import os.path
 import pickle
 import urllib
 
-import io
 from tqdm import tqdm
-import signal
 
-sys.path.append('scripts/EnsemblREST')
-from EnsemblREST import REST
+from scripts.EnsemblREST import REST
 
 class GeneAnnotator(object):
     '''
