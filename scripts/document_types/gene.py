@@ -1,20 +1,19 @@
-import os.path
+import os
 import pandas as pd
 import pickle
 from tqdm import tqdm
 from scripts.document_types import gene_annotator
 
+
+def env_variable_else(env_var_name, default):
+    return os.environ.get(env_var_name) if os.environ.get(env_var_name) else default
+
+
 def get_gene_data(connection, RESTURL, limit=0, testRun = False):
     # Importing shell variables:
-    try:
-        HGNC_file = os.environ["HGNC_file"]
-    except:
-        raise(ValueError("[Error] \"HGNC_file\" shell variable is not defined."))
+    HGNC_file = env_variable_else("HGNCFtpPath", "ftp://ftp.ebi.ac.uk/pub/databases/genenames/new/tsv/non_alt_loci_set.txt")
 
-    try:
-        EnsemblFtpPath = os.environ["EnsemblFtpPath"]
-    except:
-        raise(ValueError("[Error] \"EnsemblFtpPath\" shell variable is not defined."))
+    EnsemblFtpPath = env_variable_else("EnsemblFtpPath", "ftp://ftp.ensembl.org/pub")
 
     # Extract gene/mapping data from database:
     geneSQL = gene_sql(connection=connection, testRun = testRun, limit = limit)
