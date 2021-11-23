@@ -117,10 +117,19 @@ class GeneAnnotator(object):
             return(geneAnnot)
 
         # filter the gff3 file with 2.8M lines
-        df = pd.read_table(self.__EnsemblFile, comment='#', dtype=str, encoding='UTF-8', header=None)
-        df = df[df[8].str.contains('ID=gene')]
+        filtered_df = pd.DataFrame()
+        # read in chunks to save memory
+        chunks = pd.read_table(self.__EnsemblFile,
+                               comment='#',
+                               dtype=str,
+                               encoding='UTF-8',
+                               header=None,
+                               chunksize=100000)
+        # filter each chunk and append to filtered df
+        for chunk in chunks:
+            filtered_df = filtered_df.append(chunk[chunk[8].str.contains('ID=gene')])
         # parse the annotations
-        for row in df.values:
+        for row in filtered_df.values:
             EnsemblAnnotationContainer.append(parse_annotation(row))
 
         # Pooling annotations into a pandas dataframe and format table:
