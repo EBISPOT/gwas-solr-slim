@@ -4,11 +4,12 @@ setup(
     name='gwas-solr-slim',
     description='GWAS solr slim document generator',
     version='0.0.1',
-    packages=find_packages(include=['scripts.*']),
+    packages=['.','scripts','scripts.document_types','scripts.EnsemblREST','scripts.ols'],
     include_package_data=True,
     license='Apache License, Version 2.0',
     entry_points={
-        "console_scripts": ['generate-solr-docs = scripts.generate_solr_docs:main']
+        "console_scripts": ['generate-solr-docs = scripts.generate_solr_docs:main',
+                            'solr-update-validate = solrUpdateValidate:main']
     },
     url='https://github.com/EBISPOT/gwas-solr-slim',
     author='EBI SPOT',

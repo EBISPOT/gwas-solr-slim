@@ -3,7 +3,6 @@ import sys
 import os
 import argparse
 import pandas as pd
-import json
 import glob
 import shutil
 
@@ -88,8 +87,7 @@ def validateDocument(schema, documentFile):
         # Is the type good?
         # Is the field multivalued?
 
-if __name__ == '__main__':
-
+def main():
     # Parsing command line arguments:
     parser = argparse.ArgumentParser()
     parser.add_argument('--server', type=str, help='Name of the solr server eg. localhost.')
@@ -140,11 +138,11 @@ if __name__ == '__main__':
 
     # Initializing solr object:
     solrObj = solr(server, port, core)
-    
+
     # # Cleaning solr:
     objectCount = solrObj.getDocCount()
     solrObj.wipeCore()
-    
+
     # If data directory and new schema file are both given, update schema file:
     print("[Info] Updating schema file.")
     try:
@@ -153,7 +151,7 @@ if __name__ == '__main__':
         print(e)
         print("[Error] Copying schema file failed.")
         sys.exit(1)
-        
+
     # Reload core:
     solrObj.reloadCore()
 
@@ -175,4 +173,5 @@ if __name__ == '__main__':
     objectCount = solrObj.getDocCount()
 
 
-
+if __name__ == '__main__':
+    main()

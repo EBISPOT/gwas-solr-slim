@@ -2,18 +2,13 @@ import subprocess
 import numpy as np
 import pandas as pd
 import os
-import sys
 import re
 import os.path
 import pickle
 import urllib
-
-import io
 from tqdm import tqdm
-import signal
 
-sys.path.append('scripts/EnsemblREST')
-from EnsemblREST import REST
+from scripts.EnsemblREST import REST
 
 class GeneAnnotator(object):
     '''
@@ -34,7 +29,7 @@ class GeneAnnotator(object):
         self.__Ensembl_release = self.EnsemblREST.getEnsemblRelease()
 
         # Validating input files:
-        self.__input_file_validator(HGNCFile,EnsemblFtpPath)
+        self.__input_file_path_constructor(HGNCFile, EnsemblFtpPath)
         
         # Report:
         if self.__verbose:
@@ -57,34 +52,12 @@ class GeneAnnotator(object):
         if self.__verbose:
             print("[Info] Gene annotation information compiled. Ready to create documents.\n")
 
-    def __input_file_validator(self, HGNCFile, EnsemblFtpPath):
+    def __input_file_path_constructor(self, HGNCFile, EnsemblFtpPath):
 
-        # Testing if HGNC file exists:
-        if not os.path.isfile(HGNCFile):
-            raise(ValueError("[Error] HGNC file (%s) does not exist." % HGNCFile))
-        else:
-            self.__HGNCFile = HGNCFile
+        self.__HGNCFile = HGNCFile
+        self.__EntrezFile = ("%s/release-%s/tsv/homo_sapiens/Homo_sapiens.GRCh38.%s.entrez.tsv.gz" % (EnsemblFtpPath, self.__Ensembl_release, self.__Ensembl_release))
+        self.__EnsemblFile = ("%s/release-%s/gff3/homo_sapiens/Homo_sapiens.GRCh38.%s.chr.gff3.gz" % (EnsemblFtpPath, self.__Ensembl_release, self.__Ensembl_release))
 
-        # Testing if Entrez directory:
-        if not os.path.exists(EnsemblFtpPath):
-            raise(ValueError("[Error] The provided Ensembl ftp path (%s) does not exist." % EnsemblFtpPath))
-        else :
-            EntrezFile = ("%s/release-%s/tsv/homo_sapiens/Homo_sapiens.GRCh38.%s.entrez.tsv.gz" % (EnsemblFtpPath, self.__Ensembl_release, self.__Ensembl_release))
-            EnsemblFile = ("%s/release-%s/gff3/homo_sapiens/Homo_sapiens.GRCh38.%s.chr.gff3.gz" % (EnsemblFtpPath, self.__Ensembl_release, self.__Ensembl_release))
-
-        # Testing if Entrez file exists:
-        if not os.path.isfile(EntrezFile):
-            raise(ValueError("[Error] Entrez file (%s) does not exist." % EntrezFile))
-        else:
-            self.__EntrezFile = EntrezFile
-        
-        # Testing if Ensembl gene file exists:
-        if not os.path.isfile(EnsemblFile):
-            raise(ValueError("[Error] Ensembl file (%s) does not exist." % EnsemblFile))
-        else:
-            self.__EnsemblFile = EnsemblFile
-
-        if self.__verbose : print('[Info] Input file validation passed.')
 
     def __input_data_validator(self, inputData):
 
@@ -114,10 +87,8 @@ class GeneAnnotator(object):
         # list with all the genes and the available annotation:
         EnsemblAnnotationContainer = []
 
-        def parse_annotation(row):
-            fields = row.split("\t")
-            
-            if len(fields) < 8: 
+        def parse_annotation(fields):
+            if len(fields) < 8:
                 print(row)
                 return()
 
@@ -145,13 +116,22 @@ class GeneAnnotator(object):
             # Adding annotation to the container
             return(geneAnnot)
 
-        # Using bash to filter the gff3 file with 2.8M lines
-        filteredLines = subprocess.Popen(['zgrep', 'ID=gene', self.__EnsemblFile],stdout=subprocess.PIPE, encoding='UTF-8')
+        # filter the gff3 file with 2.8M lines
+        filtered_df = pd.DataFrame()
+        # read in chunks to save memory
+        chunks = pd.read_table(self.__EnsemblFile,
+                               comment='#',
+                               dtype=str,
+                               encoding='UTF-8',
+                               header=None,
+                               chunksize=100000)
+        # filter each chunk and append to filtered df
+        for chunk in chunks:
+            filtered_df = filtered_df.append(chunk[chunk[8].str.contains('ID=gene')])
+        # parse the annotations
+        for row in filtered_df.values:
+            EnsemblAnnotationContainer.append(parse_annotation(row))
 
-        # Processing output:
-        for line in iter(filteredLines.stdout.readline,''):
-            EnsemblAnnotationContainer.append(parse_annotation(line.rstrip()))
-   
         # Pooling annotations into a pandas dataframe and format table:
         EnsAnnotDf = pd.DataFrame.from_records(EnsemblAnnotationContainer)
 
@@ -182,7 +162,7 @@ class GeneAnnotator(object):
         if self.__verbose: print("[Info] Retrieving HGNC dataset from %s" % self.__HGNCFile )
 
         df = pd.read_table(self.__HGNCFile, dtype = str)
-        
+
         def concatenate(x):
             row = x.loc[~ x.isna()].tolist()
             return("|".join([str(x) for x in row]))
@@ -383,4 +363,3 @@ class GeneAnnotator(object):
         except:
             print("[Warning] Saving data has failed.")
             return(1)
-

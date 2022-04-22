@@ -1,12 +1,8 @@
 import cx_Oracle
 import contextlib
-import argparse
-import sys
 from tqdm import tqdm
-import json
-import os.path
 
-from ols import OLSData
+from scripts.ols import OLSData
 
 
 def get_trait_data(connection, limit=None):
