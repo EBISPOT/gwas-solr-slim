@@ -19,7 +19,9 @@ class REST(object):
     def getEnsemblRelease(self):
         URL = ( "%s/info/data/?content-type=application/json" % self.URL)
         response = self.__get_submit(URL)
-        return(response['releases'][0])
+        releases = response['releases']
+        releases.sort(reverse=True)
+        return(releases[0])
 
     # https://rest.ensembl.org/ld/human/rs1042779/1000GENOMES:phase_3:EUR?content-type=application/json
     def getLD(self, rsID, population = '1000GENOMES:phase_3:EUR', window = 500):
