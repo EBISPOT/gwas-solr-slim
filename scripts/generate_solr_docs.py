@@ -101,7 +101,7 @@ def main():
 
     # Commandline arguments
     parser = argparse.ArgumentParser()
-    parser.add_argument('--database', default='SPOTREL', choices=['DEV3', 'SPOTREL'],
+    parser.add_argument('--database', default='SPOTREL', choices=['DEV3', 'SPOTREL', 'DEV2'],
                         help='Run as (default: SPOTREL).')
     parser.add_argument('--limit', type=int,
                         help='Limit the number of created documents to this number for testing purposes.', default=0)
