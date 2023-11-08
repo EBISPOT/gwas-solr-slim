@@ -93,10 +93,10 @@ def publication_test(fatHost, identifiers):
 
     return(failed_identifiers)
 
-# https://www.ebi.ac.uk/ols/api/ontologies/efo/terms/http%253A%252F%252Fwww.ebi.ac.uk%252Fefo%252FEFO_1000649/graph
+# https://www.ebi.ac.uk/ols4/api/ontologies/efo/terms/http%253A%252F%252Fwww.ebi.ac.uk%252Fefo%252FEFO_1000649/graph
 def get_EFO_from_OLS(EFO_URL):
     encoded_EFO_URL = quote(quote(EFO_URL, safe=''), safe='')
-    URL = 'https://www.ebi.ac.uk/ols/api/ontologies/efo/terms/%s/graph' % encoded_EFO_URL
+    URL = 'https://www.ebi.ac.uk/ols4/api/ontologies/efo/terms/%s/graph' % encoded_EFO_URL
     r = requests.get(URL)
     if not r.status_code == 200:
         print(r.text)
