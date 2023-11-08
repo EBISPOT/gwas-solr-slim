@@ -4,6 +4,7 @@ from tqdm import tqdm
 from requests.utils import quote
 import re
 
+from scripts.constants import OLS4_BASE_URL, ONTOLOGY_PREFIX, TERMS_PREFIX, GRAPH_PREFIX
 
 class slimSolrWalker(object):
     '''
@@ -96,7 +97,7 @@ def publication_test(fatHost, identifiers):
 # https://www.ebi.ac.uk/ols4/api/ontologies/efo/terms/http%253A%252F%252Fwww.ebi.ac.uk%252Fefo%252FEFO_1000649/graph
 def get_EFO_from_OLS(EFO_URL):
     encoded_EFO_URL = quote(quote(EFO_URL, safe=''), safe='')
-    URL = 'https://www.ebi.ac.uk/ols4/api/ontologies/efo/terms/%s/graph' % encoded_EFO_URL
+    URL = f"{OLS4_BASE_URL}/{ONTOLOGY_PREFIX}/{TERMS_PREFIX}/{encoded_EFO_URL}/{GRAPH_PREFIX}"
     r = requests.get(URL)
     if not r.status_code == 200:
         print(r.text)
