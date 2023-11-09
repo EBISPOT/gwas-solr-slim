@@ -1,8 +1,8 @@
 import requests, json
 import urllib
 
+from scripts.constants import OLS4_BASE_URL, ONTOLOGY_PREFIX, TERMS_PREFIX
 from scripts.ols import DataFormatter
-
 
 class OLSData:
     def __init__(self, term_iri):
@@ -17,10 +17,8 @@ class OLSData:
         term_iri = self.term_iri
         term_iri_double_encoded = urllib.parse.quote_plus(urllib.parse.quote_plus(term_iri))
 
-
         # TODO: Make robust to the term/ontology being removed from OLS
-        OLS_URL = "http://www.ebi.ac.uk/ols/api/ontologies/{ontology_prefix:s}/terms/"\
-            "{term_iri:s}".format(ontology_prefix='efo',term_iri=term_iri_double_encoded)
+        OLS_URL = f"{OLS4_BASE_URL}/{ONTOLOGY_PREFIX}/{TERMS_PREFIX}/{term_iri_double_encoded}"
 
         no_results = {'iri': None, 'synonyms': None, 'short_form': None, 'label': None, 'description': None}
 
