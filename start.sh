@@ -103,12 +103,16 @@ source "${envAct}"
 ##
 declare -A jobIDs
 for document in ${docTypes[*]}; do 
-    jobID=$(bsub -q production-rh74 \
-                 -M10000 -R"select[mem>10000] rusage[mem=10000]" \
-                 -J generate_${document} \
-                 -o ${targetDir}/logs/generate_${document}.o \
-                 -e ${targetDir}/logs/generate_${document}.e \
-                 "${PythonCommand} --document ${document}" | perl -lane '($id) = $_ =~ /Job <(\d+)>/; print $id' )
+    # Submit the job and capture the output
+    output=$(sbatch --partition=production-rh74 \
+                    --mem=10000 \
+                    --time=01:00:00 \
+                    --job-name=generate_${document} \
+                    --output=${targetDir}/logs/generate_${document}.o \
+                    --error=${targetDir}/logs/generate_${document}.e \
+                    --wrap="${PythonCommand} --document ${document}")
+    # Extract the job ID
+    jobID=$(echo $output | perl -lane '($id) = $_ =~ /Submitted batch job (\d+)/; print $id' )
     jobIDs[$document]=${jobID}
     echo "[Info] ${document} generation is submitted to farm (job ID: ${jobID})."
 done
