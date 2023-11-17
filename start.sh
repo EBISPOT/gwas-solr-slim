@@ -55,7 +55,7 @@ while getopts "htd:l:b:" opt; do
 done
 
 # Compiling command:
-PythonCommand="python ${scriptDir}/scripts/generate_solr_docs.py"
+PythonCommand="generate-solr-docs"
 
 # Checking target directory:
 if [[ -z "${targetDir}" ]]; then
@@ -93,25 +93,31 @@ fi
 source ${scriptDir}/config.sh
 
 # Adding script folder to the path:
-export PYTHONPATH=${PYTHONPATH}:${scriptDir}/scripts
+#export PYTHONPATH=${PYTHONPATH}:${scriptDir}/scripts
 
 # Activate virtual environment:
-source "${envAct}"
+#source "${envAct}"
 
 ##
 ## Firing up all documents on farm, while capturing jobIDs
 ##
 declare -A jobIDs
 for document in ${docTypes[*]}; do 
-    jobID=$(bsub -q production-rh74 \
-                 -M10000 -R"select[mem>10000] rusage[mem=10000]" \
-                 -J generate_${document} \
-                 -o ${targetDir}/logs/generate_${document}.o \
-                 -e ${targetDir}/logs/generate_${document}.e \
-                 "${PythonCommand} --document ${document}" | perl -lane '($id) = $_ =~ /Job <(\d+)>/; print $id' )
+    output=$(sbatch --mem=1G \
+                    --time=08:00:00 \
+                    --job-name=generate_${document} \
+                    --output=${targetDir}/logs/generate_${document}.o \
+                    --error=${targetDir}/logs/generate_${document}.e \
+                    --wrap="${PythonCommand} --document ${document}")
+
+    # Extract the job ID
+    jobID=$(echo $output | perl -lane '($id) = $_ =~ /Submitted batch job (\d+)/; print $id' )
     jobIDs[$document]=${jobID}
     echo "[Info] ${document} generation is submitted to farm (job ID: ${jobID})."
 done
+
+# Declare an associative array for completed jobs
+declare -A completedJobIDs
 
 ##
 ## Every 15 minutes we check all the running jobs to see if they are still running:
@@ -119,10 +125,18 @@ done
 finishedJob=0
 while [[ finishedJob -ne ${#docTypes[@]} ]]; do
     for document in ${!jobIDs[@]}; do 
-        isRunnning=$(bjobs -a ${jobIDs[${document}]} | tail -n1 | awk '{if($3 != "PEND" && $3 != "RUN"){ print 1 } else {print 0}}')
-        if [[ $isRunnning -eq 1 ]]; then 
-            finishedJob=$(( $finishedJob + 1 ));
+        if squeue -j ${jobIDs[${document}]} | grep -q ${jobIDs[${document}]}; then
+            isRunning=1
+        else
+            isRunning=0
+        fi
+
+        if [[ $isRunning -eq 0 ]]; then 
+            finishedJob=$(( $finishedJob + 1 ))
             echo "[Info] Generation of ${document} (job ID: ${jobIDs[${document}]}) is completed."
+
+            # Store the completed job ID in completedJobIDs and unset from jobIDs
+            completedJobIDs[$document]=${jobIDs[$document]}
             unset jobIDs[$document]
         fi
     done
@@ -130,17 +144,21 @@ while [[ finishedJob -ne ${#docTypes[@]} ]]; do
 done
 echo "[Info] All jobs finished."
 
-##
-## Testing if the jobs finished with success
-##
+# Testing if the jobs finished with success
 failed=0
-for document in ${docTypes[*]}; do 
-    if [[ -z $( grep "Successfully completed" "${targetDir}/logs/generate_${document}.o" ) ]]; then 
-        echo "[Warning] Generation of $document failed." 
-        failed=1
+for document in "${docTypes[@]}"; do 
+    if [[ -n ${completedJobIDs[${document}]} ]]; then
+        jobState=$(sacct -j "${completedJobIDs[${document}]}" --format=State --noheader | head -n 1 | tr -d '[:space:]')
+        if [[ $jobState != "COMPLETED" ]]; then 
+            echo "[Warning] Generation of $document failed." 
+            failed=1
+        fi
+    else
+        echo "[Info] Job for $document was not completed or already checked."
     fi
 done
 
+# Final check for any failures
 if [[ $failed -ne 0 ]]; then
     echo "[Error] At least one of the documents failed. Exiting."
     exit 1
@@ -148,4 +166,3 @@ else
     echo "[Info] Documents successfully generated. Exiting."
     exit 0
 fi
-
