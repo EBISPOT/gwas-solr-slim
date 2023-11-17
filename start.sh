@@ -103,25 +103,35 @@ source ${scriptDir}/config.sh
 ##
 declare -A jobIDs
 for document in ${docTypes[*]}; do 
+    # Submit the job and capture the output
+    # Construct the sbatch command as a string
+    sbatch_command="sbatch --mem=1G \
+                        --time=08:00:00 \
+                        --job-name=generate_${document} \
+                        --output=${targetDir}/logs/generate_${document}.o \
+                        --error=${targetDir}/logs/generate_${document}.e \
+                        --wrap='${PythonCommand} --document ${document}'"
+
+    # Echo the command
+    echo "Executing command: $sbatch_command"
+
     output=$(sbatch --mem=1G \
                     --time=08:00:00 \
                     --job-name=generate_${document} \
                     --output=${targetDir}/logs/generate_${document}.o \
                     --error=${targetDir}/logs/generate_${document}.e \
                     --wrap="${PythonCommand} --document ${document}")
-
     # Extract the job ID
+    echo $output
     jobID=$(echo $output | perl -lane '($id) = $_ =~ /Submitted batch job (\d+)/; print $id' )
     jobIDs[$document]=${jobID}
-    echo "[Info] ${document} generation is submitted to farm (job ID: ${jobID})."
+    # echo "[Info] ${document} generation is submitted to farm (job ID: ${jobID})."
 done
 
 # Declare an associative array for completed jobs
 declare -A completedJobIDs
 
-##
-## Every 15 minutes we check all the running jobs to see if they are still running:
-##
+# Your existing job monitoring loop
 finishedJob=0
 while [[ finishedJob -ne ${#docTypes[@]} ]]; do
     for document in ${!jobIDs[@]}; do 
@@ -130,6 +140,10 @@ while [[ finishedJob -ne ${#docTypes[@]} ]]; do
         else
             isRunning=0
         fi
+
+        echo "Document: $document"
+        echo "Job ID for $document: ${jobIDs[$document]}"
+        echo "Is Running: $isRunning"
 
         if [[ $isRunning -eq 0 ]]; then 
             finishedJob=$(( $finishedJob + 1 ))
@@ -148,6 +162,9 @@ echo "[Info] All jobs finished."
 failed=0
 for document in "${docTypes[@]}"; do 
     if [[ -n ${completedJobIDs[${document}]} ]]; then
+        echo "sacct output for $document:"
+        sacct -j "${completedJobIDs[${document}]}" --format=State --noheader
+
         jobState=$(sacct -j "${completedJobIDs[${document}]}" --format=State --noheader | head -n 1 | tr -d '[:space:]')
         if [[ $jobState != "COMPLETED" ]]; then 
             echo "[Warning] Generation of $document failed." 
