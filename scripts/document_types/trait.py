@@ -293,7 +293,7 @@ def __get_descendants(efo_data):
         ols_data = OLSData.OLSData(row[2])
         ols_term_data = ols_data.get_ols_term(type)
 
-        if ols_term_data['iri']:
+        if ols_term_data and 'iri' in ols_term_data:
             if 'hierarchicalDescendants' in ols_term_data.keys():
                 descendant_data = OLSData.OLSData(ols_term_data['hierarchicalDescendants'])
                 descendant_terms = [descendant for descendant in descendant_data.get_hierarchicalDescendants()]
