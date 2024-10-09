@@ -3,7 +3,7 @@ from setuptools import find_packages, setup
 setup(
     name='gwas-solr-slim',
     description='GWAS solr slim document generator',
-    version='2.0.2',
+    version='2.0.3',
     packages=['.','scripts','scripts.document_types','scripts.EnsemblREST','scripts.ols'],
     include_package_data=True,
     license='Apache License, Version 2.0',
