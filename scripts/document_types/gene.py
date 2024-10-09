@@ -11,7 +11,7 @@ def env_variable_else(env_var_name, default):
 
 def get_gene_data(connection, RESTURL, limit=0, testRun = False):
     # Importing shell variables:
-    HGNC_file = env_variable_else("HGNCFtpPath", "ftp://ftp.ebi.ac.uk/pub/databases/genenames/new/tsv/non_alt_loci_set.txt")
+    HGNC_file = env_variable_else("HGNCFtpPath", "ftp://ftp.ebi.ac.uk/pub/databases/genenames/out_of_date_hgnc/tsv/non_alt_loci_set.txt")
 
     EnsemblFtpPath = env_variable_else("EnsemblFtpPath", "ftp://ftp.ensembl.org/pub")
 
